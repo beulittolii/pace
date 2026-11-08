@@ -11,10 +11,24 @@ service cloud.firestore {
     function own(id) { return member() && studentId() == id
       && exists(/databases/$(database)/documents/students/$(string(id)))
       && get(/databases/$(database)/documents/students/$(string(id))).data.get('accountUid', '') == request.auth.uid; }
-    function writable(id) {
+    function linkedWritable(id) {
       return own(id) && exists(/databases/$(database)/documents/students/$(string(id)))
-        && get(/databases/$(database)/documents/students/$(string(id))).data.get('linking', false) == false
+        && get(/databases/$(database)/documents/students/$(string(id))).data.get('linking', false) == false;
+    }
+    function writable(id) {
+      return linkedWritable(id)
         && get(/databases/$(database)/documents/students/$(string(id))).data.get('accessMode', 'FULL') == 'FULL';
+    }
+    function calendarVocabWritable(id) {
+      return linkedWritable(id)
+        && get(/databases/$(database)/documents/students/$(string(id))).data.get('accessMode', 'FULL') == 'CALENDAR_ONLY';
+    }
+    function calendarVocabResult(data) {
+      let testId = data.get('testId', '');
+      return calendarVocabWritable(data.studentId) && testId is string && testId != ''
+        && exists(/databases/$(database)/documents/tests/$(testId))
+        && get(/databases/$(database)/documents/tests/$(testId)).data.studentId == data.studentId
+        && get(/databases/$(database)/documents/tests/$(testId)).data.type == 'VOCAB';
     }
     function accountAfter() { return getAfter(/databases/$(database)/documents/members/$(request.auth.uid)).data; }
     function validRedemption(code) {
@@ -91,14 +105,18 @@ service cloud.firestore {
           'reviewStage','reviewRevision','questions','sourceRefs','sourceSignature','unlockedAt','updatedAt',
           'missingDays','completedDays','requiredDays','dataIssues','reviewMessage','initialWrongCount',
           'sourceTestIds','assignedDays','weekdayCompletion','unresolvedCount','blockedReason','reviewVersion'
-        ]));
+        ])) || (calendarVocabWritable(resource.data.studentId) && resource.data.type == 'VOCAB'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','score','retestStatus']));
       allow delete: if admin();
     }
     match /{collection}/{id} {
       allow read: if collection in ['vocabTestResults','textMemorizeResults'] && (admin() || own(resource.data.studentId));
-      allow create: if collection in ['vocabTestResults','textMemorizeResults'] && (admin() || writable(request.resource.data.studentId));
+      allow create: if collection in ['vocabTestResults','textMemorizeResults'] && (admin() || writable(request.resource.data.studentId)
+        || (collection == 'vocabTestResults' && calendarVocabResult(request.resource.data)));
       allow update: if collection in ['vocabTestResults','textMemorizeResults'] && (admin()
-        || (writable(resource.data.studentId) && request.resource.data.studentId == resource.data.studentId));
+        || (request.resource.data.studentId == resource.data.studentId && (writable(resource.data.studentId)
+          || (collection == 'vocabTestResults' && calendarVocabResult(request.resource.data)
+            && (resource.data.get('testId', '') == '' || request.resource.data.testId == resource.data.testId)))));
       allow delete: if collection in ['vocabTestResults','textMemorizeResults'] && admin();
     }
     match /academicRecords/{id} {

@@ -44,7 +44,7 @@
     if (!profile) return '연결된 학생 프로필을 찾지 못했어요. 다시 로그인해주세요.';
     if (profile.accountUid !== auth?.auth?.currentUser?.uid) return '계정과 학생 프로필 연결을 확인하지 못했어요. 관리자에게 문의해주세요.';
     if (profile.linking) return '학생 프로필 연결 작업 중이에요. 잠시 후 다시 시도해주세요.';
-    if (profile.accessMode === 'CALENDAR_ONLY') return '이 계정은 현재 캘린더 전용이에요. 관리자가 전체 학습 사용으로 바꾸면 자동 저장돼요.';
+    if (profile.accessMode === 'CALENDAR_ONLY' && !result.testId) return '캘린더 전용 계정은 배정된 단어 시험 결과만 동기화할 수 있어요.';
     return null;
   }
   Object.assign(AppData, {
@@ -101,8 +101,9 @@
             const ref = f.doc(auth.db, 'vocabTestResults', entry.id);
             // Existing rules allow creating an owned result, but cannot read a
             // missing result (there is no resource.data.studentId yet). Establish
-            // ownership first; merge only the owner so existing grades/attempts
-            // are never overwritten. A transaction then merges the full result.
+            // ownership and the assigned schedule first so calendar-only accounts
+            // can upload too. Existing grades/attempts are never overwritten.
+            // A transaction then merges the full result.
             if (entry.result.testId) {
               stage = '시험 일정 확인';
               const schedule = await this.withCloudTimeout(f.getDoc(f.doc(auth.db,'tests',entry.result.testId)), '시험 일정 확인');
@@ -110,7 +111,9 @@
             }
             if (owner() !== uid) break;
             stage = '결과 저장 준비';
-            await this.withCloudTimeout(f.setDoc(ref, {studentId:Number(entry.result.studentId)}, {merge:true}), '결과 저장 준비');
+            const ownership = {studentId:Number(entry.result.studentId)};
+            if (entry.result.testId) ownership.testId = entry.result.testId;
+            await this.withCloudTimeout(f.setDoc(ref, ownership, {merge:true}), '결과 저장 준비');
             if (owner() !== uid) break;
             stage = '결과 저장';
             const saved = await this.withCloudTimeout(f.runTransaction(auth.db, async tx => {

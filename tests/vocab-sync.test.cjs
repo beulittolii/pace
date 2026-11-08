@@ -143,3 +143,53 @@ test('owner-only initialization records do not appear as completed results',()=>
   const f=fixture();f.run('FirebaseStore.vocabTestResults=[{studentId:1,id:"pending"}]');
   assert.equal(f.run('AppData.getVocabTestResults().length'),0);
 });
+
+test('calendar-only students sync offline assigned vocabulary results when the online event fires',async()=>{
+  const f=fixture();f.run("FirebaseStore.students[0].accessMode='CALENDAR_ONLY'");
+  await f.save(result());assert.equal(f.storage.size,1);
+  f.context.navigator.onLine=true;f.events.online();
+  await f.run('AppData.flushPendingVocabResults()');
+  assert.equal(f.storage.size,0);
+  assert.equal(f.docs.get('vocabTestResults/1_set1_3_test1').score,100);
+  assert.deepEqual(f.schedules,['test1']);
+  assert.equal(f.run('FirebaseStore.students[0].accessMode'),'CALENDAR_ONLY');
+});
+
+test('calendar-only ownership bootstrap includes the schedule without overwriting existing grades',async()=>{
+  const f=fixture();f.run("FirebaseStore.students[0].accessMode='CALENDAR_ONLY'");await f.save(result());
+  f.docs.set('vocabTestResults/1_set1_3_test1',{...result('2026-11-09T10:00:00.000Z'),score:55,gradedByAdmin:true});
+  const original=f.auth.raw.setDoc;
+  let bootstrap;
+  f.auth.raw.setDoc=async(ref,data,options)=>{
+    bootstrap=JSON.parse(JSON.stringify(data));
+    if(!data.testId) throw {code:'permission-denied'};
+    return original(ref,data,options);
+  };
+  await f.flush();
+  assert.deepEqual(bootstrap,{studentId:1,testId:'test1'});
+  assert.equal(f.storage.size,0);
+  assert.equal(f.docs.get('vocabTestResults/1_set1_3_test1').score,55);
+  assert.equal(f.docs.get('vocabTestResults/1_set1_3_test1').gradedByAdmin,true);
+});
+
+test('calendar-only queues survive old deployed rules until permissions are updated',async()=>{
+  const f=fixture();f.run("FirebaseStore.students[0].accessMode='CALENDAR_ONLY'");await f.save(result());
+  const original=f.auth.raw.setDoc;
+  f.auth.raw.setDoc=async()=>{throw {code:'permission-denied'};};
+  await f.flush();assert.equal(f.storage.size,1);
+  f.auth.raw.setDoc=original;
+  await f.flush();assert.equal(f.storage.size,0);
+  assert.equal(f.docs.get('vocabTestResults/1_set1_3_test1').attempts.length,1);
+});
+
+test('calendar-only sync still blocks unassigned results, linking profiles and mismatched accounts',async()=>{
+  for(const setup of ["input.testId=null","FirebaseStore.students[0].linking=true","FirebaseStore.students[0].accountUid='other'"]) {
+    const f=fixture();f.run("FirebaseStore.students[0].accessMode='CALENDAR_ONLY'");
+    f.context.input=result();f.run(setup);
+    await f.run('AppData.saveVocabTestResult(input)');
+    await f.flush();
+    assert.equal(f.storage.size,1);
+    assert.equal([...f.docs.keys()].some(key=>key.startsWith('vocabTestResults/')),false);
+    assert.deepEqual(f.schedules,[]);
+  }
+});
