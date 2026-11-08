@@ -119,46 +119,10 @@ const App = {
     });
   },
 
-  saveSession(sessionData) {
-    try {
-      localStorage.setItem('yem_auth_session', JSON.stringify(sessionData));
-    } catch (e) {
-      console.warn('세션 저장 실패:', e);
-    }
-  },
-
-  clearSession() {
-    try {
-      localStorage.removeItem('yem_auth_session');
-    } catch (e) {
-      console.warn('세션 삭제 실패:', e);
-    }
-  },
-
-  restoreSession() {
-    try {
-      const raw = localStorage.getItem('yem_auth_session');
-      if (!raw) return false;
-      const session = JSON.parse(raw);
-      if (session && session.role === 'admin') {
-        this.state.isAdminLoggedIn = true;
-        this.state.isStudentLoggedIn = false;
-        this.showAdminDashboard();
-        return true;
-      }
-      if (session && session.role === 'student' && session.studentId) {
-        const studentId = Number(session.studentId);
-        this.state.isStudentLoggedIn = true;
-        this.state.isAdminLoggedIn = false;
-        this.state.selectedStudentId = studentId;
-        this.selectStudent(studentId);
-        return true;
-      }
-    } catch (e) {
-      console.warn('세션 복원 실패:', e);
-    }
-    return false;
-  },
+  // Firebase Auth is the only source of session authority.
+  saveSession() {},
+  clearSession() { localStorage.removeItem('yem_auth_session'); },
+  restoreSession() { return false; },
 
   bindEvents() {
     // 태블릿처럼 hover가 없는 넓은 터치 화면에서는 축소된 좌측 메뉴를
@@ -483,11 +447,13 @@ const App = {
     document.getElementById('textMemorizePaperView')?.classList.add('hidden');
     this.updateHeaderActions();
     this.renderLanding();
+    this.focusLoginInput();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
 
   async logoutStudent() {
     if (!(await this.checkAndConfirmVocabTestExit())) return;
+    if (window.PaceAuth) return PaceAuth.logout();
     this.clearSession();
     this.state.isStudentLoggedIn = false;
     this.toast('로그아웃되었습니다.', 'info');
@@ -739,88 +705,14 @@ const App = {
     const errorEl = document.getElementById('loginError');
     if (errorEl) errorEl.classList.add('hidden');
 
-    const idInput = document.getElementById('studentLoginId');
-    const pwInput = document.getElementById('studentLoginPassword');
-    if (idInput) idInput.value = '';
-    if (pwInput) pwInput.value = '';
-
-    this.focusLoginInput();
   },
 
   focusLoginInput() {
-    setTimeout(() => {
-      const idInput = document.getElementById('studentLoginId');
-      if (idInput && (this.state.view === 'landing' || !this.state.view)) {
-        idInput.focus();
-      }
-    }, 50);
+    const idInput = document.getElementById('studentLoginId');
+    if (idInput && (this.state.view === 'landing' || !this.state.view)) idInput.focus();
   },
 
-  handleLogin(e) {
-    if (e && typeof e.preventDefault === 'function') e.preventDefault();
-    const loginIdInput = document.getElementById('studentLoginId');
-    const passwordInput = document.getElementById('studentLoginPassword');
-    const loginId = (loginIdInput?.value || '').trim();
-    const password = (passwordInput?.value || '').trim();
-    const errorEl = document.getElementById('loginError');
-    const normalizedLoginId = loginId.toLocaleLowerCase('en-US');
-
-    if (!loginId) {
-      if (errorEl) errorEl.classList.remove('hidden');
-      this.toast('아이디(또는 이름)를 입력해주세요.', 'error');
-      return false;
-    }
-
-    if (!password) {
-      if (errorEl) errorEl.classList.remove('hidden');
-      this.toast('비밀번호 숫자 4자리를 입력해주세요.', 'error');
-      return false;
-    }
-
-    // 관리자 로그인 확인 (admin / 1357 또는 선생님 / 1357)
-    const isTeacherId = (
-      normalizedLoginId === TEACHER_LOGIN_ID.toLocaleLowerCase('en-US') ||
-      loginId === '선생님' ||
-      loginId === '관리자' ||
-      loginId === '교사'
-    );
-
-    if (isTeacherId && password === TEACHER_PASSWORD) {
-      this.state.isAdminLoggedIn = true;
-      this.state.isStudentLoggedIn = false;
-      this.saveSession({ role: 'admin' });
-      if (errorEl) errorEl.classList.add('hidden');
-      this.toast('관리자 모드로 로그인되었습니다.', 'success');
-      this.showAdminDashboard();
-      return false;
-    }
-
-    // 학생 목록에서 아이디 또는 이름으로 검색
-    const students = AppData.getStudents();
-    const student = students.find(item => {
-      const matchId = String(item.loginId || '').trim().toLocaleLowerCase('en-US') === normalizedLoginId;
-      const matchName = String(item.name || '').trim() === loginId;
-      return (matchId || matchName) && String(item.password || '').trim() === password;
-    });
-
-    if (!student) {
-      if (errorEl) {
-        errorEl.innerHTML = '<i class="fa-solid fa-circle-exclamation mr-1"></i>아이디 또는 비밀번호가 일치하지 않습니다.';
-        errorEl.classList.remove('hidden');
-      }
-      this.toast('아이디(이름) 또는 비밀번호를 다시 확인해주세요.', 'error');
-      return false;
-    }
-
-    if (errorEl) errorEl.classList.add('hidden');
-    this.state.isStudentLoggedIn = true;
-    this.state.isAdminLoggedIn = false;
-    this.state.selectedStudentId = Number(student.id);
-    this.saveSession({ role: 'student', studentId: Number(student.id), name: student.name });
-    this.toast(`${student.name} 학생, 환영합니다! 👋`, 'success');
-    this.selectStudent(student.id);
-    return false;
-  },
+  handleLogin(e) { return window.PaceAuth?.login(e); },
 
   // ========================================================
   // 3. 학생 전용 대시보드 (Student Dashboard & Calendar)
@@ -3176,6 +3068,7 @@ const App = {
   // ========================================================
   logoutAdmin() {
     if (this.blockGrammarExit?.()) return;
+    if (window.PaceAuth) return PaceAuth.logout();
     this.clearSession();
     this.state.isAdminLoggedIn = false;
     this.toast('관리자 모드를 종료했습니다.', 'info');
@@ -3575,7 +3468,7 @@ const App = {
             <i class="fa-solid fa-user-plus"></i>
           </div>
           <div>
-            <span class="text-xs font-bold text-indigo-600">새 학생 계정</span>
+            <span class="text-xs font-bold text-indigo-600">새 학생 프로필</span>
             <h4 class="font-bold text-slate-900">학생 추가</h4>
           </div>
         </div>
@@ -3595,20 +3488,10 @@ const App = {
               <option value="CALENDAR_ONLY">영어 학습 캘린더만 사용</option>
             </select>
           </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block font-bold text-slate-600 mb-0.5">로그인 아이디</label>
-              <input type="text" id="newStudentLoginId" autocomplete="off" placeholder="영문/숫자" class="w-full py-2 px-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 bg-white" />
-            </div>
-            <div>
-              <label class="block font-bold text-slate-600 mb-0.5">비밀번호</label>
-              <input type="password" id="newStudentPassword" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="new-password" placeholder="숫자 4자리" oninput="this.value=this.value.replace(/[^0-9]/g, '').slice(0, 4)" class="w-full py-2 px-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 bg-white" />
-            </div>
-          </div>
         </div>
         <div class="pt-2 flex justify-end">
           <button onclick="App.handleAddStudentProfile()" class="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 transition shadow-sm">
-            학생 계정 추가
+            학생 프로필 추가
           </button>
         </div>
       </div>
@@ -3641,16 +3524,6 @@ const App = {
                 <option value="CALENDAR_ONLY" ${student.accessMode === 'CALENDAR_ONLY' ? 'selected' : ''}>영어 학습 캘린더만 사용</option>
               </select>
             </div>
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="block font-bold text-slate-600 mb-0.5">로그인 아이디</label>
-                <input type="text" id="editStudentLoginId_${student.id}" value="${this.escapeHtml(student.loginId || '')}" autocomplete="off" class="w-full py-2 px-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 bg-white" />
-              </div>
-              <div>
-                <label class="block font-bold text-slate-600 mb-0.5">비밀번호</label>
-                <input type="password" id="editStudentPassword_${student.id}" value="${this.escapeHtml(student.password || '')}" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="new-password" oninput="this.value=this.value.replace(/[^0-9]/g, '').slice(0, 4)" class="w-full py-2 px-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 bg-white" />
-              </div>
-            </div>
           </div>
 
           <div class="pt-2 flex items-center justify-between gap-3">
@@ -3671,15 +3544,10 @@ const App = {
     const name = document.getElementById(`editStudentName_${studentId}`).value.trim();
     const target = document.getElementById(`editStudentTarget_${studentId}`).value.trim();
     const accessMode = document.getElementById(`editStudentAccessMode_${studentId}`).value;
-    const loginId = document.getElementById(`editStudentLoginId_${studentId}`).value.trim();
-    const password = document.getElementById(`editStudentPassword_${studentId}`).value;
-
-    if (!this.validateStudentAccount({ name, loginId, password }, studentId)) {
-      return;
-    }
+    if (!name) { this.toast('학생 이름을 입력해주세요.', 'error'); return; }
 
     try {
-      await AppData.updateStudent({ id: studentId, name, target, loginId, password, accessMode });
+      await AppData.updateStudent({ id: studentId, name, target, accessMode });
       this.toast(`학생 #${studentId} 프로필이 저장되었습니다.`, 'success');
     } catch (error) {
       console.error(error);
@@ -3687,47 +3555,20 @@ const App = {
     }
   },
 
-  validateStudentAccount({ name, loginId, password }, excludingStudentId = null) {
-    if (!name || !loginId || !password) {
-      this.toast('학생 이름, 로그인 아이디, 비밀번호를 모두 입력해주세요.', 'error');
-      return false;
-    }
-    if (!/^\d{4}$/.test(password)) {
-      this.toast('비밀번호는 숫자 4자리로 설정해주세요.', 'error');
-      return false;
-    }
-    const normalizedLoginId = loginId.toLocaleLowerCase('en-US');
-    if (normalizedLoginId === TEACHER_LOGIN_ID.toLocaleLowerCase('en-US')) {
-      this.toast('관리자 계정 아이디는 학생 계정으로 사용할 수 없습니다.', 'error');
-      return false;
-    }
-    const duplicated = AppData.getStudents().some(student =>
-      student.id !== Number(excludingStudentId) &&
-      String(student.loginId || '').toLocaleLowerCase('en-US') === normalizedLoginId
-    );
-    if (duplicated) {
-      this.toast('이미 사용 중인 로그인 아이디입니다.', 'error');
-      return false;
-    }
-    return true;
-  },
-
   async handleAddStudentProfile() {
     const name = document.getElementById('newStudentName').value.trim();
     const target = document.getElementById('newStudentTarget').value.trim();
     const accessMode = document.getElementById('newStudentAccessMode').value;
-    const loginId = document.getElementById('newStudentLoginId').value.trim();
-    const password = document.getElementById('newStudentPassword').value;
-    if (!this.validateStudentAccount({ name, loginId, password })) return;
+    if (!name) { this.toast('학생 이름을 입력해주세요.', 'error'); return; }
 
     try {
-      const student = await AppData.addStudent({ name, target, loginId, password, accessMode });
+      const student = await AppData.addStudent({ name, target, accessMode });
       this.state.adminSelectedStudentId = student.id;
       this.toast(`${student.name} 학생 계정이 추가되었습니다.`, 'success');
       this.renderAdminStudentsTab();
     } catch (error) {
       console.error(error);
-      this.toast('학생 계정 추가에 실패했습니다.', 'error');
+      this.toast('학생 프로필 추가에 실패했습니다.', 'error');
     }
   },
 
@@ -12129,27 +11970,7 @@ const App = {
 
 };
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 사이트 초기화 시작 (클라우드 동기화 후 UI 렌더링)');
-
-  // 클라우드 데이터가 준비되기 전에는 실제 화면 대신 스켈레톤만 노출합니다.
-  (async () => {
-    try {
-      const isReady = await AppData.waitForFirebase(3000);
-      if (isReady) {
-        await AppData.initializeStudents();
-        await AppData.initializeCloudData();
-        AppData.startStudentListener();
-        AppData.startCloudListeners();
-        console.log('사이트 초기화 및 클라우드 동기화 완료');
-      } else {
-        console.warn('Firebase 오프라인 모드로 실행');
-      }
-    } catch (error) {
-      console.error('클라우드 동기화 중 오류 (로컬 모드로 전환):', error);
-    } finally {
-      // 동기화 완료 또는 연결 실패 후에만 실제 앱을 렌더링합니다.
-      App.init();
-      App.finishInitialLoading();
-    }
-  })();
+  App.init();
+  App.finishInitialLoading();
+  window.PaceAuth?.boot();
 });

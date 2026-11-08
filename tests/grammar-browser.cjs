@@ -99,13 +99,14 @@ async function loadApp(page) {
   }
   await page.setViewportSize({ width: 1280, height: 950 });
   await page.evaluate(() => App.showAdminDashboard());
-  await page.getByRole('button', { name: '문법 테스트 추가', exact: true }).click();
-  assert.equal(await page.locator('[name="grammarPart"]:checked').count(), 2);
-  assert.equal(await page.locator('[name="grammarPart"]:disabled').count(), 2);
-  await page.locator('#grammarAssignmentSave').click();
+  await page.evaluate(() => App.openAddTestModal());
+  await page.locator('[name="formTestType"][value="GRAMMAR"]').check();
+  assert.equal(await page.locator('[name="formGrammarPart"]:checked').count(), 2);
+  assert.equal(await page.locator('[name="formGrammarPart"]:disabled').count(), 2);
+  await page.locator('#adminTestFormModal button[type="submit"]').click();
   await page.waitForFunction(() => FirebaseStore.tests.length === 1);
   const rootId = await page.evaluate(() => FirebaseStore.tests[0].id);
-  await page.waitForFunction(() => document.getElementById('grammarAssignmentModal').classList.contains('hidden'));
+  await page.waitForFunction(() => document.getElementById('adminTestFormModal').classList.contains('hidden'));
   await page.evaluate(async id => {
     App.state.isAdminLoggedIn = false; App.state.isStudentLoggedIn = true;
     await App.selectStudent(501); App.openTestDetailModal(id);

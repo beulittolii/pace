@@ -1,0 +1,4 @@
+{
+  "indexes": [{ "collectionGroup": "academicRecords", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "kind", "order": "ASCENDING" }, { "fieldPath": "studentId", "order": "ASCENDING" }] }],
+  "fieldOverrides": []
+}

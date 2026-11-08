@@ -210,7 +210,7 @@ test('teacher can exclude a pending day to unlock, restore it to relock, and aut
 });
 test('students cannot configure excluded days, malformed days reject, and save failure preserves prior configuration', async () => {
   const f=fixture();f.persist();const review=await f.run("AppData.createWeeklyReview({studentId:1,monday:'2026-11-02'})");f.run(`const id='${review.id}';App.state.isAdminLoggedIn=false`);
-  await assert.rejects(f.run('AppData.configureWeeklyReviewDays(id,[4])'),/선생님/);
+  await assert.rejects(f.run('AppData.configureWeeklyReviewDays(id,[4])'),/관리자/);
   f.run('App.state.isAdminLoggedIn=true');
   for(const invalid of ['[-1]','[5]','["1"]']) await assert.rejects(f.run(`AppData.configureWeeklyReviewDays(id,${invalid})`),/요일/);
   f.run("window.firebaseFns.runTransaction=async()=>{throw new Error('저장 실패')}");

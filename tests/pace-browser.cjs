@@ -68,9 +68,8 @@ const server = http.createServer((req, res) => {
   assert.equal(await page.getByText('01 — 시작하기', { exact: true }).count(), 0);
   await page.setViewportSize({ width: 1440, height: 1050 });
   await page.screenshot({ path: '/private/tmp/pace-production-login.png', fullPage: true });
-  await page.getByLabel('아이디', { exact: true }).fill('pace-test');
-  await page.getByLabel('비밀번호', { exact: true }).fill('1234');
-  await page.getByRole('button', { name: '로그인', exact: true }).click();
+  // Authentication is exercised by auth-integration.cjs; seed the authenticated UI fixture here.
+  await page.evaluate(() => { App.state.isStudentLoggedIn = true; App.selectStudent(501); });
   await page.locator('.pace-home-panels').waitFor();
   assert.equal(await page.locator('#landingView').isVisible(), false, 'Login stays hidden after navigation');
   assert.match(await page.locator('#studentBanner').innerText(), /검증 학생/);

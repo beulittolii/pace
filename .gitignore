@@ -8,3 +8,10 @@ auto_sync.log
 /start_auto_sync.command
 /start_background_service.command
 /stop_background_service.command
+
+# Local auth tooling and credentials
+/node_modules/
+/.firebase/
+*service-account*.json
+*serviceAccount*.json
+/auth-backups/

@@ -21,7 +21,7 @@ const LEGACY_STORAGE_KEYS = {
   vocabTestResults: 'eng_tutoring_vocab_test_results'
 };
 const TEACHER_LOGIN_ID = 'admin';
-const TEACHER_PASSWORD = '1357';
+
 // 10월 31일 이전 시험은 영구적으로 정리하며, 이 날짜부터의 일정만 유지합니다.
 const TEST_RETENTION_START_DATE = '2026-11-01';
 
@@ -44,70 +44,70 @@ const DEFAULT_STUDENTS = [
     name: '김단하',
     target: '내신 2등급',
     loginId: 'student1',
-    password: '1234'
+
   },
   {
     id: 2,
     name: '김성헌',
     target: '내신 1등급',
     loginId: 'student2',
-    password: '1234'
+
   },
   {
     id: 3,
     name: '김영빈',
     target: '내신 1등급',
     loginId: 'student3',
-    password: '1234'
+
   },
   {
     id: 4,
     name: '백승조',
     target: '내신 2등급',
     loginId: 'student4',
-    password: '1234'
+
   },
   {
     id: 5,
     name: '이상록',
     target: '내신 2등급',
     loginId: 'student5',
-    password: '1234'
+
   },
   {
     id: 6,
     name: '조용준',
     target: '내신 2등급',
     loginId: 'student6',
-    password: '1234'
+
   },
   {
     id: 11,
     name: '송규인',
     target: '내신 영어 100점',
     loginId: 'gyuin',
-    password: '1012'
+
   },
   {
     id: 12,
     name: '강민수',
     target: '내신 영어 1등급',
     loginId: 'kangminsu',
-    password: '1031'
+
   },
   {
     id: 13,
     name: '이현민',
     target: '내신 영어 2등급',
     loginId: 'gusals',
-    password: '1006'
+
   },
   {
     id: 14,
     name: '테스트',
     target: '',
     loginId: 'test',
-    password: '1234'
+
   }
 ];
 
@@ -1189,8 +1189,13 @@ const AppData = {
     }
 
     try {
-
-      // 캐시 먼저 업데이트
+      const { collection, getDocs } = window.firebaseFns;
+      const existing = await getDocs(collection(window.firebaseDB, 'students'));
+      const linked = new Map(existing.docs.filter(s => s.data().accountUid).map(s => [Number(s.data().id), s.data().accountUid]));
+      if ([...linked.keys()].some(id => !students.some(s => Number(s.id) === id))) {
+        throw new Error('가입 계정이 연결된 학생은 백업 복원이나 초기화로 삭제할 수 없습니다. 학생 관리에서 먼저 확인해주세요.');
+      }
+      students = students.map(({ password, loginId, accountUid, ...student }) => ({ ...student, ...(linked.has(Number(student.id)) ? { accountUid: linked.get(Number(student.id)) } : {}) }));
       FirebaseStore.students = [...students];
       FirebaseStore.studentsLoaded = true;
 
@@ -1289,81 +1294,8 @@ const AppData = {
   // ======================================================
 
   async initializeStudents() {
-    await this.waitForFirebase();
-
-    try {
-      const students = await this.loadStudentsFromFirestore();
-
-      const dummyNames = ['김민준', '이서연', '박도현', '최지우', '정현우', '한유진'];
-      const realProfileMap = {
-        1: { name: '김단하', target: '내신 2등급', loginId: 'student1', password: '1234' },
-        2: { name: '김성헌', target: '내신 1등급', loginId: 'student2', password: '1234' },
-        3: { name: '김영빈', target: '내신 1등급', loginId: 'student3', password: '1234' },
-        4: { name: '백승조', target: '내신 2등급', loginId: 'student4', password: '1234' },
-        5: { name: '이상록', target: '내신 2등급', loginId: 'student5', password: '1234' },
-        6: { name: '조용준', target: '내신 2등급', loginId: 'student6', password: '1234' }
-      };
-
-      let needsSync = false;
-      let updatedStudents = [...students];
-
-      // 1. Firestore에 학생 데이터가 아예 없는 경우 전체 DEFAULT_STUDENTS로 초기화
-      if (updatedStudents.length === 0) {
-        console.log('📦 Firestore에 학생 데이터가 없어 실제 학생 목록으로 초기화합니다.');
-        await this.saveStudents(DEFAULT_STUDENTS);
-        FirebaseStore.students = [...DEFAULT_STUDENTS];
-        FirebaseStore.studentsLoaded = true;
-        return FirebaseStore.students;
-      }
-
-      // 2. 가짜 샘플 이름(김민준, 이서연 등)이 남아있으면 실제 학생으로 보정
-      //    (선생님이 추가한 11: 송규인, 12: 강민수, 13: 이현민, 14: 테스트 등은 온전히 유지)
-      updatedStudents = updatedStudents.map(student => {
-        const id = Number(student.id);
-        if (dummyNames.includes(student.name) && realProfileMap[id]) {
-          needsSync = true;
-          return {
-            ...student,
-            name: realProfileMap[id].name,
-            target: student.target && !student.target.includes('수능') ? student.target : realProfileMap[id].target,
-            loginId: student.loginId || realProfileMap[id].loginId,
-            password: student.password || realProfileMap[id].password
-          };
-        }
-        return student;
-      });
-
-      // 3. 로그인 정보(loginId, password) 누락 방지 (기존 계정에 아이디/비번 없을 때만 기본값 부여)
-      updatedStudents = updatedStudents.map(student => ({
-        ...student,
-        loginId: student.loginId || `student${student.id}`,
-        password: /^\d{4}$/.test(String(student.password || '')) ? String(student.password) : '1234'
-      }));
-
-      // ID 순 정렬
-      updatedStudents.sort((a, b) => a.id - b.id);
-
-      if (needsSync) {
-        await this.saveStudents(updatedStudents);
-        console.log('✅ 학생 프로필 정상화 및 Firestore 동기화 완료');
-      }
-
-      FirebaseStore.students = updatedStudents;
-      FirebaseStore.studentsLoaded = true;
-      return FirebaseStore.students;
-
-    } catch (error) {
-      console.error('❌ 학생 데이터 초기화 실패:', error);
-      FirebaseStore.students = [...DEFAULT_STUDENTS];
-      FirebaseStore.studentsLoaded = true;
-      return FirebaseStore.students;
-    }
+    return this.loadStudentsFromFirestore();
   },
-
-
-  // ======================================================
-  // 학생 데이터 실시간 동기화
-  // ======================================================
 
   startStudentListener() {
 
@@ -2074,9 +2006,7 @@ const AppData = {
         id: Number(studentData.id)
       };
 
-      await this.saveStudents(
-        students
-      );
+      await this.writeDocument('students', studentData.id, students[idx]);
 
       return students[idx];
     }
@@ -2090,22 +2020,17 @@ const AppData = {
   // ======================================================
 
   async addStudent(studentData) {
-    const students = this.getStudents();
-    const nextId = students.reduce(
-      (maxId, student) => Math.max(maxId, Number(student.id) || 0),
-      0
-    ) + 1;
-    const newStudent = {
-      id: nextId,
-      name: studentData.name,
-      target: studentData.target || '',
-      loginId: studentData.loginId,
-      password: studentData.password,
-      accessMode: studentData.accessMode === 'CALENDAR_ONLY' ? 'CALENDAR_ONLY' : 'FULL'
-    };
-
-    await this.saveStudents([...students, newStudent]);
-    return newStudent;
+    const { doc, runTransaction } = window.firebaseFns;
+    const student = await runTransaction(window.firebaseDB, async tx => {
+      let id = this.getStudents().reduce((max, student) => Math.max(max, Number(student.id) || 0), 0) + 1;
+      let ref = doc(window.firebaseDB, 'students', String(id));
+      while ((await tx.get(ref)).exists()) { id++; ref = doc(window.firebaseDB, 'students', String(id)); }
+      const student = { id, name: studentData.name, target: studentData.target || '', accessMode: studentData.accessMode === 'CALENDAR_ONLY' ? 'CALENDAR_ONLY' : 'FULL' };
+      tx.set(ref, student);
+      return student;
+    });
+    FirebaseStore.students = [...this.getStudents().filter(s => s.id !== student.id), student];
+    return student;
   },
 
   async deleteStudent(studentId) {
@@ -2118,7 +2043,7 @@ const AppData = {
     // 클라우드의 최신 문서로 정리합니다. 캐시 전체 덮어쓰기는 다른 학생의 변경을 유실시킬 수 있습니다.
     const { collection, getDocs, runTransaction } = window.firebaseFns;
     const db = window.firebaseDB;
-    const collections = ['tests', 'vocabTestResults', 'textMemorizeResults', 'vocabSets', 'academicData'];
+    const collections = ['tests', 'vocabTestResults', 'textMemorizeResults', 'vocabSets', 'academicData', 'academicRecords', 'members'];
     const snapshots = await Promise.all(collections.map(name => getDocs(collection(db, name))));
     for (let i = 0; i < collections.length; i++) {
       const name = collections[i];
@@ -2127,7 +2052,7 @@ const AppData = {
           const latest = await tx.get(document.ref);
           if (!latest.exists()) return;
           const value = latest.data();
-          if (['tests', 'vocabTestResults', 'textMemorizeResults'].includes(name)) {
+          if (['tests', 'vocabTestResults', 'textMemorizeResults', 'academicRecords', 'members'].includes(name)) {
             if (Number(value.studentId) === normalizedStudentId) tx.delete(document.ref);
           } else if (name === 'vocabSets') {
             const ids = value.studentIds || [];
@@ -2194,7 +2119,7 @@ const AppData = {
         new Date().toISOString(),
 
       students:
-        this.getStudents(),
+        this.getStudents().map(({ password, loginId, accountUid, ...student }) => student),
 
       tests:
         this.getTests(),
@@ -2224,7 +2149,10 @@ const AppData = {
     ) {
 
       await this.saveStudents(
-        importedObj.students
+        importedObj.students.map(({ password, loginId, accountUid, ...student }) => {
+          const current = this.getStudentById(student.id);
+          return { ...student, ...(current?.accountUid ? { accountUid: current.accountUid } : {}) };
+        })
       );
 
       await this.saveTests(importedObj.tests);

@@ -1,0 +1,115 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function admin() {
+      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.enabled == true;
+    }
+    function member() { return signedIn() && exists(/databases/$(database)/documents/members/$(request.auth.uid)); }
+    function studentId() { return get(/databases/$(database)/documents/members/$(request.auth.uid)).data.studentId; }
+    function own(id) { return member() && studentId() == id
+      && exists(/databases/$(database)/documents/students/$(string(id)))
+      && get(/databases/$(database)/documents/students/$(string(id))).data.get('accountUid', '') == request.auth.uid; }
+    function writable(id) {
+      return own(id) && exists(/databases/$(database)/documents/students/$(string(id)))
+        && get(/databases/$(database)/documents/students/$(string(id))).data.get('linking', false) == false
+        && get(/databases/$(database)/documents/students/$(string(id))).data.get('accessMode', 'FULL') == 'FULL';
+    }
+    function accountAfter() { return getAfter(/databases/$(database)/documents/members/$(request.auth.uid)).data; }
+    function validRedemption(code) {
+      return signedIn() && !member()
+        && get(/databases/$(database)/documents/invites/$(code)).data.status == 'unused'
+        && getAfter(/databases/$(database)/documents/invites/$(code)).data.status == 'used'
+        && getAfter(/databases/$(database)/documents/invites/$(code)).data.usedBy == request.auth.uid;
+    }
+    match /admins/{uid} {
+      allow get: if signedIn() && (uid == request.auth.uid || admin());
+      allow list: if admin();
+      allow write: if false; // Bootstrap/revoke with the privileged operator tool only.
+    }
+    match /members/{uid} {
+      allow get: if signedIn() && (uid == request.auth.uid || admin());
+      allow list: if admin();
+      allow create: if signedIn() && uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid','name','loginId','studentId','inviteCode','createdAt'])
+        && request.resource.data.uid == uid
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 40
+        && request.resource.data.loginId.matches('^[a-z0-9_]{4,20}$')
+        && request.auth.token.email == request.resource.data.loginId + '@accounts.pace.invalid'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.studentId is int
+        && validRedemption(request.resource.data.inviteCode)
+        && !exists(/databases/$(database)/documents/students/$(string(request.resource.data.studentId)))
+        && getAfter(/databases/$(database)/documents/students/$(string(request.resource.data.studentId))).data.accountUid == uid;
+      allow update: if admin();
+      allow delete: if admin();
+    }
+    match /invites/{code} {
+      allow get: if signedIn();
+      allow list: if admin();
+      allow create: if admin() && code.matches('^[A-Z0-9]{6}$') && code.matches('.*[A-Z].*') && code.matches('.*[0-9].*')
+        && request.resource.data.keys().hasOnly(['code','status','createdAt','createdBy'])
+        && request.resource.data.code == code && request.resource.data.status == 'unused'
+        && request.resource.data.createdBy == request.auth.uid && request.resource.data.createdAt == request.time;
+      allow update: if (admin() && resource.data.status == 'unused' && request.resource.data.status == 'cancelled'
+          && (request.resource.data.get('allowRetest', false) == resource.data.get('allowRetest', false) || request.resource.data.get('allowRetest', false) == false)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
+        || (signedIn() && validRedemption(code)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','usedBy','usedAt'])
+          && request.resource.data.usedAt == request.time && accountAfter().inviteCode == code
+          && accountAfter().uid == request.auth.uid);
+      allow delete: if false;
+    }
+    match /students/{id} {
+      allow get: if admin() || (signedIn() && !exists(/databases/$(database)/documents/students/$(id))) || own(resource.data.id);
+      allow list: if admin() || own(resource.data.id);
+      allow create: if admin() || (signedIn() && !member()
+        && request.resource.data.keys().hasOnly(['id','name','target','accessMode','accountUid','newAccount'])
+        && request.resource.data.id is int && string(request.resource.data.id) == id
+        && request.resource.data.id >= 1000000000000
+        && request.resource.data.accountUid == request.auth.uid
+        && request.resource.data.newAccount == true && request.resource.data.target == '' && request.resource.data.accessMode == 'FULL'
+        && request.resource.data.name == accountAfter().name && accountAfter().studentId == request.resource.data.id
+        && validRedemption(accountAfter().inviteCode));
+      allow update, delete: if admin();
+    }
+    match /vocabSets/{id} {
+      // Shared dictionaries contain learning content, not private student records.
+      allow read: if admin() || member();
+      allow write: if admin();
+    }
+    match /tests/{id} {
+      allow read: if admin() || own(resource.data.studentId);
+      allow create: if admin() || (writable(request.resource.data.studentId) && request.resource.data.type == 'VOCAB_REVIEW'
+        && id == 'weekly_review_' + string(request.resource.data.studentId) + '_' + request.resource.data.weekStart);
+      allow update: if admin() || (writable(resource.data.studentId)
+        && request.resource.data.studentId == resource.data.studentId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status','score','retestStatus','retestDate','allowRetest','practiceResult','vocabResult','textMemorizeResult',
+          'grammarStage','grammarResults','grammarUpdatedAt','grammarStartedAt','grammarDraft','grammarDraftSavedAt','weeklyReviewResult',
+          'reviewStage','reviewRevision','questions','sourceRefs','sourceSignature','unlockedAt','updatedAt',
+          'missingDays','completedDays','requiredDays','dataIssues','reviewMessage','initialWrongCount',
+          'sourceTestIds','assignedDays','weekdayCompletion','unresolvedCount','blockedReason','reviewVersion'
+        ]));
+      allow delete: if admin();
+    }
+    match /{collection}/{id} {
+      allow read: if collection in ['vocabTestResults','textMemorizeResults'] && (admin() || own(resource.data.studentId));
+      allow create: if collection in ['vocabTestResults','textMemorizeResults'] && (admin() || writable(request.resource.data.studentId));
+      allow update: if collection in ['vocabTestResults','textMemorizeResults'] && (admin()
+        || (writable(resource.data.studentId) && request.resource.data.studentId == resource.data.studentId));
+      allow delete: if collection in ['vocabTestResults','textMemorizeResults'] && admin();
+    }
+    match /academicRecords/{id} {
+      allow read: if admin() || own(resource.data.studentId);
+      allow create: if admin() || (writable(request.resource.data.studentId)
+        && request.resource.data.keys().hasOnly(['kind','studentId','items','updatedAt'])
+        && id == request.resource.data.kind + '_' + string(request.resource.data.studentId));
+      allow update: if admin() || (writable(resource.data.studentId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items','updatedAt']));
+      allow delete: if admin();
+    }
+    match /academicData/{id} { allow read, write: if admin(); }
+  }
+}
