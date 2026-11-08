@@ -37,6 +37,16 @@
   }
   let running = null;
   let lastSyncError = null;
+  function writeAccessProblem(result) {
+    const auth = window.PaceAuth;
+    if (auth?.admin) return null;
+    const profile = FirebaseStore.students?.find(student => Number(student.id) === Number(result.studentId));
+    if (!profile) return '연결된 학생 프로필을 찾지 못했어요. 다시 로그인해주세요.';
+    if (profile.accountUid !== auth?.auth?.currentUser?.uid) return '계정과 학생 프로필 연결을 확인하지 못했어요. 관리자에게 문의해주세요.';
+    if (profile.linking) return '학생 프로필 연결 작업 중이에요. 잠시 후 다시 시도해주세요.';
+    if (profile.accessMode === 'CALENDAR_ONLY') return '이 계정은 현재 캘린더 전용이에요. 관리자가 전체 학습 사용으로 바꾸면 자동 저장돼요.';
+    return null;
+  }
   Object.assign(AppData, {
     pendingVocabResults() {
       const uid = owner();
@@ -85,6 +95,8 @@
           try {
             const auth = window.PaceAuth;
             if (!auth.admin && Number(entry.result.studentId) !== Number(auth.member.studentId)) continue;
+            const accessProblem = writeAccessProblem(entry.result);
+            if (accessProblem) throw Error(accessProblem);
             const f = auth.raw;
             const ref = f.doc(auth.db, 'vocabTestResults', entry.id);
             // Existing rules allow creating an owned result, but cannot read a

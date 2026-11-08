@@ -26,7 +26,7 @@ function fixture(storage=new Map(), docs=new Map()) {
   context.window={PaceAuth:auth,addEventListener:(e,f)=>events[e]=f};
   context.App={updateVocabScheduleStatus:async id=>schedules.push(id)};
   run(fs.readFileSync(path.join(__dirname,'../vocab-sync.js'),'utf8'));
-  run(`FirebaseStore.vocabTestResults=[]; FirebaseStore.tests=[];`);
+  run(`FirebaseStore.vocabTestResults=[]; FirebaseStore.tests=[]; FirebaseStore.students=[{id:1,accountUid:'alice',accessMode:'FULL'}];`);
   docs.set('tests/test1',{id:'test1',studentId:1,type:'VOCAB'});
   return {run,storage,docs,auth,context,events,schedules,save:async r=>{context.input=r;return run('AppData.saveVocabTestResult(input)');},flush:async()=>{context.navigator.onLine=true;await run('AppData.flushPendingVocabResults()');}};
 }
