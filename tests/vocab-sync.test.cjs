@@ -15,6 +15,7 @@ function fixture(storage=new Map(), docs=new Map()) {
   const auth={auth:{currentUser:{uid:'alice'}},member:{studentId:1},db:{},raw:{
     doc:(_,collection,id)=>collection+'/'+id,
     getDoc:async key=>({exists:()=>docs.has(key),data:()=>docs.get(key)}),
+    setDoc:async(key,data,options)=>docs.set(key,options?.merge?{...docs.get(key),...data}:data),
     runTransaction:async(_,callback)=>{
       const writes=[];
       const output=await callback({get:async key=>({exists:()=>docs.has(key),data:()=>docs.get(key)}),set:(key,data)=>writes.push([key,data])});
@@ -105,4 +106,40 @@ test('online event restores signed-in profile after offline reload before syncin
   f.context.navigator.onLine=true;f.events.online();
   await new Promise(r=>setTimeout(r,15));
   assert.equal(restored,true);assert.equal(f.storage.size,0);
+});
+
+test('first upload works when deployed rules deny reading a nonexistent result',async()=>{
+  const f=fixture();await f.save(result());
+  const base=f.auth.raw.runTransaction;
+  f.auth.raw.runTransaction=async(db,callback)=>base(db,tx=>callback({
+    ...tx,get:async ref=>{
+      if(ref.startsWith('vocabTestResults/')&&!f.docs.has(ref)) throw {code:'permission-denied'};
+      return tx.get(ref);
+    }
+  }));
+  await f.flush();
+  assert.equal(f.storage.size,0);
+  assert.equal(f.docs.get('vocabTestResults/1_set1_3_test1').score,100);
+});
+test('ownership bootstrap preserves existing server grades and history',async()=>{
+  const f=fixture();await f.save(result());
+  const remote={...result('2026-11-09T10:00:00.000Z'),score:55,gradedByAdmin:true};
+  f.docs.set('vocabTestResults/1_set1_3_test1',remote);
+  f.auth.raw.runTransaction=async()=>{throw {code:'unavailable'};};
+  await f.flush();
+  assert.equal(f.docs.get('vocabTestResults/1_set1_3_test1').score,55);
+  assert.equal(f.docs.get('vocabTestResults/1_set1_3_test1').gradedByAdmin,true);
+  assert.equal(f.storage.size,1);
+});
+test('one deleted schedule does not block other results waiting to sync',async()=>{
+  const f=fixture();await f.save(result());f.docs.delete('tests/test1');
+  f.docs.set('tests/test2',{id:'test2',studentId:1,type:'VOCAB'});
+  await f.save({...result(),testId:'test2'});
+  await f.flush();
+  assert.equal(f.storage.size,1);
+  assert.equal(f.docs.get('vocabTestResults/1_set1_3_test2').score,100);
+});
+test('owner-only initialization records do not appear as completed results',()=>{
+  const f=fixture();f.run('FirebaseStore.vocabTestResults=[{studentId:1,id:"pending"}]');
+  assert.equal(f.run('AppData.getVocabTestResults().length'),0);
 });

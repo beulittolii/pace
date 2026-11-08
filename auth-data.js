@@ -89,6 +89,7 @@ Object.assign(PaceAuth, {
       if (!await AcademicManager.pullCloudDataToLocal(false)) throw Error('학업 기록을 불러오지 못했어요. 다시 로그인해주세요.');
       AcademicManager.listenToCloudAcademicData();
     }
+    AppData.updateVocabSyncStatus?.();
     void AppData.flushPendingVocabResults?.();
     // No legacy seeding, cross-student caches, or background cleanup on sign-in.
     const loadingUid = this.auth.currentUser.uid;

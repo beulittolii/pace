@@ -36,13 +36,14 @@
     return {...latest, attempts:[...attempts.values()].sort((a,b)=>String(a.completedAt).localeCompare(String(b.completedAt))), reviewHistory:[...review.values()]};
   }
   let running = null;
+  let lastSyncError = null;
   Object.assign(AppData, {
     pendingVocabResults() {
       const uid = owner();
       return uid ? read(uid) : [];
     },
     mergePendingVocabResults(rows) {
-      const items = new Map(rows.map(r=>[this.getVocabTestResultDocumentId(r), r]));
+      const items = new Map(rows.filter(r=>r.direction != null).map(r=>[this.getVocabTestResultDocumentId(r), r]));
       for (const entry of this.pendingVocabResults()) {
         if (!window.PaceAuth.admin && Number(entry.result.studentId) !== Number(window.PaceAuth.member.studentId)) continue;
         items.set(entry.id, merge(items.get(entry.id), entry.result));
@@ -62,10 +63,16 @@
       return result;
     },
     updateVocabSyncStatus() {
-      const el = document.getElementById('vocabSyncStatus');
-      if (!el) return;
       const count = this.pendingVocabResults().length;
-      el.textContent = count ? `기기에 저장했어요 · 서버 동기화 대기 ${count}건. 연결되면 자동으로 저장해요.` : '서버에 저장했어요.';
+      const reason = lastSyncError?.uid === owner() ? lastSyncError.message : '';
+      const text = count ? `기기에 저장했어요 · 서버 동기화 대기 ${count}건.${reason ? ' ' + reason : ' 자동으로 다시 시도해요.'}` : '서버에 저장했어요.';
+      const el = document.getElementById('vocabSyncStatus');
+      if (el) el.textContent = text;
+      const notice = document.getElementById('vocabSyncNotice');
+      if (notice) {
+        notice.hidden = !count;
+        document.getElementById('vocabSyncNoticeText').textContent = text;
+      }
     },
     async flushPendingVocabResults() {
       const uid = owner();
@@ -79,6 +86,17 @@
             if (!auth.admin && Number(entry.result.studentId) !== Number(auth.member.studentId)) continue;
             const f = auth.raw;
             const ref = f.doc(auth.db, 'vocabTestResults', entry.id);
+            // Existing rules allow creating an owned result, but cannot read a
+            // missing result (there is no resource.data.studentId yet). Establish
+            // ownership first; merge only the owner so existing grades/attempts
+            // are never overwritten. A transaction then merges the full result.
+            if (entry.result.testId) {
+              const schedule = await this.withCloudTimeout(f.getDoc(f.doc(auth.db,'tests',entry.result.testId)), '시험 일정 확인');
+              if (!schedule.exists()) throw Error('시험 일정이 삭제되었어요. 관리자에게 문의해주세요.');
+            }
+            if (owner() !== uid) break;
+            await this.withCloudTimeout(f.setDoc(ref, {studentId:Number(entry.result.studentId)}, {merge:true}), '결과 저장 준비');
+            if (owner() !== uid) break;
             const saved = await this.withCloudTimeout(f.runTransaction(auth.db, async tx => {
               if (owner() !== uid) throw Error('로그인 상태가 변경되었어요.');
               const snapshot = await tx.get(ref);
@@ -107,9 +125,19 @@
             }
             // A newer attempt may have been queued while this write was in flight.
             remove(uid, entry);
+            lastSyncError = null;
           } catch (error) {
+            const code = String(error.code || '').replace(/^firestore\//, '');
+            const messages = {
+              'permission-denied':'계정의 저장 권한을 확인하지 못했어요. 다시 로그인하거나 관리자에게 문의해주세요.',
+              'unauthenticated':'다시 로그인해주세요. 보관한 결과는 유지돼요.',
+              'unavailable':'서버에 연결하지 못했어요. 연결이 복구되면 다시 시도해요.',
+              'resource-exhausted':'서버 사용량 한도에 도달했어요. 결과는 기기에 보관 중이에요.'
+            };
+            lastSyncError = {uid, message:messages[code] || error.message || '서버 연결을 확인하고 다시 시도해주세요.'};
             console.warn('단어 결과는 기기에 보관 중입니다. 동기화를 재시도합니다.', error);
-            break;
+            // One blocked schedule must not prevent other results from syncing.
+            continue;
           }
         }
       })().catch(error => console.warn('단어 결과 동기화 대기:', error)).finally(() => {

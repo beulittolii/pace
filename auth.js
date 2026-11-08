@@ -59,6 +59,7 @@
       clearTimeout(AppData._weeklyReviewTimer); AppData._weeklyReviewTimer = null;
       App.state.specialScienceResults = {}; App.state.specialScienceResultsStudentId = null;
       this.member = null; this.admin = false;
+      AppData.updateVocabSyncStatus?.();
       App.state.isAdminLoggedIn = false; App.state.isStudentLoggedIn = false;
     },
     async identity(user) {
