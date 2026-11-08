@@ -81,6 +81,7 @@
       running = (async () => {
         for (const entry of read(uid)) {
           if (owner() !== uid) break;
+          let stage = '결과 확인';
           try {
             const auth = window.PaceAuth;
             if (!auth.admin && Number(entry.result.studentId) !== Number(auth.member.studentId)) continue;
@@ -91,12 +92,15 @@
             // ownership first; merge only the owner so existing grades/attempts
             // are never overwritten. A transaction then merges the full result.
             if (entry.result.testId) {
+              stage = '시험 일정 확인';
               const schedule = await this.withCloudTimeout(f.getDoc(f.doc(auth.db,'tests',entry.result.testId)), '시험 일정 확인');
               if (!schedule.exists()) throw Error('시험 일정이 삭제되었어요. 관리자에게 문의해주세요.');
             }
             if (owner() !== uid) break;
+            stage = '결과 저장 준비';
             await this.withCloudTimeout(f.setDoc(ref, {studentId:Number(entry.result.studentId)}, {merge:true}), '결과 저장 준비');
             if (owner() !== uid) break;
+            stage = '결과 저장';
             const saved = await this.withCloudTimeout(f.runTransaction(auth.db, async tx => {
               if (owner() !== uid) throw Error('로그인 상태가 변경되었어요.');
               const snapshot = await tx.get(ref);
@@ -114,12 +118,14 @@
             // Keep the queue until the corresponding schedule is also updated.
             if (entry.result.testId) {
               // Always load the server's current schedule instead of replaying a stale whole document.
+              stage = '시험 상태 확인';
               const testRef = f.doc(auth.db,'tests',entry.result.testId);
               const snapshot = await this.withCloudTimeout(f.getDoc(testRef), '시험 일정 확인');
               if (owner() !== uid) break;
               if (!snapshot.exists()) throw Error('시험 일정을 찾지 못했어요.');
               const test = {...snapshot.data(),id:entry.result.testId};
               FirebaseStore.tests = [...FirebaseStore.tests.filter(t=>t.id!==test.id),test];
+              stage = '시험 상태 저장';
               await this.withCloudTimeout(App.updateVocabScheduleStatus(test.id), '시험 상태 동기화');
               if (owner() !== uid) break;
             }
@@ -134,7 +140,8 @@
               'unavailable':'서버에 연결하지 못했어요. 연결이 복구되면 다시 시도해요.',
               'resource-exhausted':'서버 사용량 한도에 도달했어요. 결과는 기기에 보관 중이에요.'
             };
-            lastSyncError = {uid, message:messages[code] || error.message || '서버 연결을 확인하고 다시 시도해주세요.'};
+            const message = messages[code] || error.message || '서버 연결을 확인하고 다시 시도해주세요.';
+            lastSyncError = {uid, message:`${stage}: ${message}`};
             console.warn('단어 결과는 기기에 보관 중입니다. 동기화를 재시도합니다.', error);
             // One blocked schedule must not prevent other results from syncing.
             continue;
