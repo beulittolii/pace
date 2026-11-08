@@ -110,6 +110,64 @@
         if (snap.data().studentId !== this.member?.studentId) this.enter().catch(e => App.toast(this.error(e), 'error'));
       }));
     },
+    openPasswordSettings() {
+      if (!this.auth?.currentUser) { App.toast('로그인 후 비밀번호를 변경해주세요.', 'error'); return; }
+      const dialog = document.getElementById('passwordSettingsDialog');
+      if (dialog.open) return;
+      this.passwordSettingsOpener = document.activeElement;
+      document.getElementById('passwordSettingsForm').reset();
+      document.getElementById('passwordSettingsMessage').textContent = '';
+      dialog.showModal();
+      document.getElementById('currentPassword').focus();
+    },
+    closePasswordSettings() {
+      if (this.passwordBusy) return;
+      document.getElementById('passwordSettingsDialog').close();
+      document.getElementById('passwordSettingsForm').reset();
+      this.passwordSettingsOpener?.focus();
+    },
+    async changePassword(event) {
+      event?.preventDefault();
+      if (this.passwordBusy) return;
+      const form = document.getElementById('passwordSettingsForm');
+      const message = document.getElementById('passwordSettingsMessage');
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmation = document.getElementById('confirmNewPassword').value;
+      message.textContent = '';
+      if (!currentPassword) { message.textContent = '현재 비밀번호를 입력해주세요.'; return; }
+      if (newPassword.length < 8 || newPassword.length > 64) { message.textContent = '새 비밀번호는 8~64자로 입력해주세요.'; return; }
+      if (newPassword !== confirmation) { message.textContent = '새 비밀번호가 서로 달라요.'; return; }
+      if (currentPassword === newPassword) { message.textContent = '현재 비밀번호와 다른 새 비밀번호를 입력해주세요.'; return; }
+      this.passwordBusy = true;
+      form.setAttribute('aria-busy', 'true');
+      form.querySelectorAll('input, button').forEach(el => el.disabled = true);
+      let changed = false;
+      try {
+        await this.ready();
+        const user = this.auth.currentUser;
+        if (!user?.email) throw Error('다시 로그인한 후 변경해주세요.');
+        const credential = this.f.EmailAuthProvider.credential(user.email, currentPassword);
+        await this.f.reauthenticateWithCredential(user, credential);
+        if (this.auth.currentUser?.uid !== user.uid) throw Error('로그인 상태가 변경되었어요. 다시 로그인해주세요.');
+        await this.f.updatePassword(user, newPassword);
+        changed = true;
+      } catch (e) {
+        const messages = {
+          'auth/invalid-credential': '현재 비밀번호를 확인해주세요.',
+          'auth/wrong-password': '현재 비밀번호를 확인해주세요.',
+          'auth/weak-password': '더 안전한 새 비밀번호를 입력해주세요.',
+          'auth/password-does-not-meet-requirements': '새 비밀번호가 보안 조건을 충족하지 않아요.',
+          'auth/requires-recent-login': '다시 로그인한 후 변경해주세요.'
+        };
+        message.textContent = messages[e.code] || this.error(e);
+      } finally {
+        this.passwordBusy = false;
+        form.removeAttribute('aria-busy');
+        form.querySelectorAll('input, button').forEach(el => el.disabled = false);
+      }
+      if (changed) { this.closePasswordSettings(); App.toast('비밀번호가 변경되었어요.', 'success'); }
+    },
     async logout() {
       this.managed = true; this.observedUid = null;
       try { await this.f.signOut(this.auth); this.clearData(); this.close(); document.querySelector('#landingView form').reset(); await App.showLanding(); }

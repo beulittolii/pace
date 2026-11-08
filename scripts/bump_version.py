@@ -13,9 +13,14 @@ pattern = re.compile(r'(<footer\b[^>]*>[\s\S]*?<p>)v(\d+)\.(\d+)\.(\d+)(</p>)')
 staged = git('show', ':index.html')
 previous = git('show', 'HEAD:index.html')
 match = pattern.search(previous)
-if not match or not pattern.search(staged):
+staged_match = pattern.search(staged)
+if not match or not staged_match:
     raise SystemExit('Footer version missing; commit cancelled.')
-version = f'{match[2]}.{match[3]}.{int(match[4]) + 1}'
+previous_version = tuple(int(match[i]) for i in (2, 3, 4))
+staged_version = tuple(int(staged_match[i]) for i in (2, 3, 4))
+# Preserve an explicit release bump instead of replacing it with a patch bump.
+next_version = staged_version if staged_version > previous_version else (*previous_version[:2], previous_version[2] + 1)
+version = '.'.join(map(str, next_version))
 updated = pattern.sub(lambda m: f'{m[1]}v{version}{m[5]}', staged, count=1)
 if staged != updated:
     # Preserve partial staging: stop rather than stage unrelated HTML changes.

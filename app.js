@@ -632,12 +632,12 @@ const App = {
         </div>
       `;
     } else if (this.state.isStudentLoggedIn) {
-      const profileButton = this.isCalendarOnlyStudent() ? `
-        <button onclick="AcademicManager.openTargetUnivModal(App.state.selectedStudentId)" class="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition flex items-center gap-1.5 border border-indigo-200 cursor-pointer" title="목표 대학 설정">
+      const profileButton = `
+        <button onclick="PaceAuth.openPasswordSettings()" class="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition flex items-center gap-1.5 border border-indigo-200 cursor-pointer" title="비밀번호 변경">
           <i class="fa-solid fa-user-gear"></i>
           <span>프로필 설정</span>
         </button>
-      ` : '';
+      `;
       container.innerHTML = `
         <div class="flex items-center gap-2">
           ${profileButton}
