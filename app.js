@@ -8179,7 +8179,7 @@ const App = {
             correct: q.word ? (vt.direction === 2 ? q.word.ko : q.word.en) : q.correct
           })));
 
-    const completedAt = new Date().toISOString();
+    const completedAt = vt.completedAt ||= new Date().toISOString();
     const startedAt = vt.startedAt || completedAt;
 
     try {
@@ -8202,13 +8202,17 @@ const App = {
         startedAt,
         completedAt
       });
-      if (test) {
+      if (test && !AppData.queueVocabResult) {
         await this.updateVocabScheduleStatus(test.id);
       }
     } catch (error) {
       console.error('단어 테스트 결과 저장 오류:', error);
+      vt.localSaveFailed = true;
+      document.getElementById('vocabTestContent').innerHTML = `<div class="glass-card p-6"><h2>결과를 기기에 보관하지 못했어요.</h2><p>이 화면을 닫지 말고 기기의 저장 공간을 확인한 뒤 다시 시도해주세요. 답안은 현재 화면에 유지돼요.</p><button type="button" class="signup-primary" onclick="App.renderVocabResult()">결과 저장 다시 시도</button></div>`;
+      return;
     }
 
+    vt.localSaveFailed = false;
     this.updateHeaderActions();
     const nextCutoff = this.getVocabCutoffScore(test, vt.direction, currentRound + 1);
     const student = AppData.getStudentById(vt.studentId);
@@ -8222,7 +8226,7 @@ const App = {
         : '이번 단계를 통과했습니다. 학습공간에서 다음 학습을 확인해 보세요.';
     document.getElementById('vocabTestContent').innerHTML = `
       <div class="grammar-result-page vocab-result-page">
-        <header class="grammar-result-heading"><div><p class="grammar-result-eyebrow">VOCABULARY TEST · ${currentRound}회차</p><h1>단어 테스트를 마쳤어요.</h1><p class="grammar-result-subtitle">${this.escapeHtml(student?.name || '')} 학생 · ${this.escapeHtml(vt.setTitle)} · ${this.escapeHtml(directionLabel)}</p></div><button type="button" class="grammar-result-back" onclick="App.exitVocabTest()">학습공간으로 돌아가기 <span aria-hidden="true">→</span></button></header>
+        <header class="grammar-result-heading"><div><p class="grammar-result-eyebrow">VOCABULARY TEST · ${currentRound}회차</p><h1>단어 테스트를 마쳤어요.</h1><p id="vocabSyncStatus" role="status" aria-live="polite" class="grammar-result-subtitle"></p><p class="grammar-result-subtitle">${this.escapeHtml(student?.name || '')} 학생 · ${this.escapeHtml(vt.setTitle)} · ${this.escapeHtml(directionLabel)}</p></div><button type="button" class="grammar-result-back" onclick="App.exitVocabTest()">학습공간으로 돌아가기 <span aria-hidden="true">→</span></button></header>
         <section class="grammar-result-panel grammar-result-practice vocab-single-result ${resultClass}">
           <div class="grammar-result-panel-top"><span class="grammar-result-eyebrow">${this.escapeHtml(directionLabel)} · ${currentRound}회차</span><span class="grammar-result-tag">${waitingGrading ? '채점 대기' : '채점 완료'}</span></div>
           <div class="grammar-result-main"><h2 class="grammar-completion-verdict">${verdict}</h2><p>${resultMessage}</p><div class="grammar-completion-score vocab-score-value">${score}<span>점</span></div>${waitingGrading ? '<p>스펠링 1차 점수 · 최종 성적은 채점 후 확정</p>' : ''}
@@ -8253,11 +8257,13 @@ const App = {
 
         </section>
       </div>`;
+    AppData.updateVocabSyncStatus?.();
     window.scrollTo({ top: 0 });
   },
 
   async exitVocabTest() {
     const vt = this.state.vocabTest;
+    if (vt?.localSaveFailed) { this.toast('아직 결과를 기기에 보관하지 못했어요. 결과 저장을 다시 시도해주세요.', 'error'); return; }
     if (vt && !vt.isCompleted) {
       const confirmExit = confirm('시험 진행 중에 나가면 0점(불합격) 처리되며 10분 동안 다시 응시할 수 없습니다.\n\n정말 시험을 종료하고 나가시겠습니까?');
       if (!confirmExit) return;
@@ -8319,7 +8325,7 @@ const App = {
         startedAt,
         completedAt
       });
-      if (test) {
+      if (test && !AppData.queueVocabResult) {
         test.status = 'FAIL';
         await this.updateVocabScheduleStatus(test.id);
       }
@@ -8727,7 +8733,7 @@ const App = {
 
     try {
       await AppData.saveVocabTestResult(updatedResult);
-      if (test) await this.updateVocabScheduleStatus(test.id);
+      if (test && !AppData.queueVocabResult) await this.updateVocabScheduleStatus(test.id);
       this.toast(`채점 저장 완료! (${score}점, ${passed ? 'PASS 통과' : 'FAIL 불합격'})`, passed ? 'success' : 'error');
       this.closeVocabGradingModal();
       // 관리자 탭 새로고침

@@ -2357,7 +2357,7 @@ const AppData = {
   // ======================================================
 
   getVocabTestResults() {
-    return FirebaseStore.vocabTestResults;
+    return this.mergePendingVocabResults ? this.mergePendingVocabResults(FirebaseStore.vocabTestResults) : FirebaseStore.vocabTestResults;
   },
 
 
@@ -2580,6 +2580,7 @@ const AppData = {
 
     FirebaseStore.vocabTestResults = results;
     const savedResult = results[index >= 0 ? index : results.length - 1];
+    if (this.queueVocabResult) return this.queueVocabResult(savedResult);
     try {
       await this.writeDocument(
         'vocabTestResults',
