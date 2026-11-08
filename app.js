@@ -3108,11 +3108,62 @@ const App = {
 
 
   // 관리자 탭 1: 학생별 시험 목록 & CRUD
+  renderAdminExamBadge(label, tone = 'slate') {
+    const tones = {
+      slate: 'bg-slate-100 text-slate-600 border-slate-200',
+      blue: 'bg-blue-50 text-blue-700 border-blue-200',
+      emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      rose: 'bg-rose-50 text-rose-700 border-rose-200',
+      amber: 'bg-amber-50 text-amber-700 border-amber-200'
+    };
+    return `<span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold border ${tones[tone] || tones.slate}">${this.escapeHtml(label)}</span>`;
+  },
+
+  renderAdminExamAction(label, handler, icon, tone = 'indigo', disabled = false) {
+    const colors = tone === 'rose' ? 'text-rose-600 hover:bg-rose-50' : 'text-indigo-600 hover:bg-indigo-50';
+    return `<button type="button" onclick="${this.escapeHtml(handler)}" title="${this.escapeHtml(label)}" aria-label="${this.escapeHtml(label)}" class="p-1.5 rounded-lg ${colors} transition disabled:opacity-50" ${disabled ? 'disabled' : ''}><i class="fa-solid ${icon}" aria-hidden="true"></i></button>`;
+  },
+
+  renderAdminExamRow(test, options) {
+    const e = value => this.escapeHtml(String(value ?? ''));
+    const review = test.type === 'VOCAB_REVIEW';
+    const types = { VOCAB: '단어', TEXT_MEMORIZE: '본문암기', PRACTICE: '문제풀이', GRAMMAR: '문법', VOCAB_REVIEW: '주간 복습' };
+    const allDay = !test.time || test.time === '00:00' || test.time === '18:00';
+    const time = review ? '마감 없음' : allDay ? '하루종일' : `${test.time}${test.endTime ? ` ~ ${test.endTime}` : ''}`;
+    const timeStatus = review ? null : this.getTestTimeStatus(test);
+    const cutoff = options.cutoff ?? test.cutoff;
+    const score = options.score ?? (test.type === 'PRACTICE' ? test.practiceResult?.score : null) ?? test.score;
+    return `<tr class="hover:bg-slate-50/80 transition">
+      <td class="py-3.5 px-4 font-semibold text-slate-800 whitespace-nowrap">
+        <div class="flex items-center gap-1.5"><span>${e(test.date || '-')}</span>${!review && test.allowLate ? this.renderAdminExamBadge('상시', 'emerald') : timeStatus?.status === 'EXPIRED' ? this.renderAdminExamBadge('마감', 'rose') : ''}</div>
+        <div class="text-[11px] font-normal text-slate-400 mt-0.5">${e(time)}</div>
+        ${!review && test.extendedDate ? `<div class="text-[11px] text-amber-700 mt-0.5">~${e(test.extendedDate)} ${e(test.extendedEndTime || '23:59')} (연장)</div>` : ''}
+      </td>
+      <td class="py-3.5 px-4 max-w-xs">
+        <button type="button" onclick="${e(options.open || `App.openTestDetailModal('${test.id}')`)}" class="font-bold text-slate-900 text-sm hover:text-indigo-600 text-left flex items-center gap-1.5">
+          <span class="admin-exam-type px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 whitespace-nowrap">${e(types[test.type] || '기존 시험')}</span><span>${e(test.title || types[test.type] || '시험')}</span>
+        </button>
+        <div class="text-xs text-slate-500 mt-0.5">${e(options.scope ?? test.scope ?? '-')}</div>
+      </td>
+      <td class="py-3.5 px-4 whitespace-nowrap">
+        <div class="text-xs text-slate-600">기준: <strong class="text-slate-800">${e(cutoff === '' || cutoff == null ? '-' : cutoff)}</strong></div>
+        <div class="text-xs text-slate-600 mt-0.5">점수: <strong class="${score === '' || score == null ? 'text-slate-400' : 'text-indigo-600'}">${e(score === '' || score == null ? '-' : score)}</strong></div>
+        ${test.type === 'VOCAB' && test.vocabQuestionCounts ? `<div class="text-[10px] text-slate-500 mt-0.5">문항: 객 ${e(test.vocabQuestionCounts[2] ?? 40)} · 스 ${e(test.vocabQuestionCounts[3] ?? 40)} · 통 ${e(test.vocabQuestionCounts[4] ?? 40)}</div>` : ''}
+      </td>
+      <td class="py-3.5 px-4 whitespace-nowrap">${options.status}</td>
+      <td class="py-3.5 px-4 text-center whitespace-nowrap"><div class="admin-exam-actions flex items-center justify-center gap-1.5">${options.actions}</div></td>
+    </tr>`;
+  },
+
   renderAdminTestsTab() {
     const students = AppData.getStudents();
     const pills = document.getElementById('adminStudentPills');
     if (!students || students.length === 0) {
       if (pills) pills.innerHTML = '<p class="text-xs text-slate-400">등록된 학생이 없습니다.</p>';
+      document.getElementById('adminSelectedStudentInfo').innerHTML = '';
+      document.getElementById('adminTableTitle').innerText = '등록된 시험 일정 목록';
+      document.getElementById('adminTestCountBadge').innerText = '총 0개';
+      document.getElementById('adminTestsTableBody').innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-400">등록된 학생이 없습니다.</td></tr>';
       return;
     }
 
@@ -3162,7 +3213,7 @@ const App = {
     if (tests.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6" class="py-8 text-center text-slate-400">
+          <td colspan="5" class="py-8 text-center text-slate-400">
             등록된 시험 일정이 없습니다. 우측 상단의 '새 시험 일정 추가' 버튼을 눌러보세요!
           </td>
         </tr>
@@ -3173,102 +3224,17 @@ const App = {
     tbody.innerHTML = tests.map(test => {
       if (test.type === 'VOCAB_REVIEW') return this.renderWeeklyReviewAdminRow(test);
       if (test.type === 'GRAMMAR') return this.renderGrammarAdminRow(test);
-      const timeStatus = this.getTestTimeStatus(test);
-      const isAllDay = !test.time || test.time === '00:00' || test.time === '18:00' || (test.endTime && test.endTime.startsWith('23:59'));
-      const timeStr = isAllDay ? '하루종일' : (test.time ? (test.endTime ? `${test.time}~${test.endTime}` : `${test.time}`) : (test.endTime ? `~${test.endTime}` : ''));
-
-      return `
-        <tr class="hover:bg-slate-50/80 transition">
-          <!-- 일시 -->
-          <td class="py-3.5 px-4 font-semibold text-slate-800 whitespace-nowrap">
-            <div class="flex items-center gap-1.5">
-              <span>${test.date}</span>
-              ${test.allowLate ? '<span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-bold">상시</span>' : (timeStatus.status === 'EXPIRED' ? '<span class="text-[10px] px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 font-bold">마감</span>' : '')}
-            </div>
-            <div class="text-[11px] font-normal text-slate-400 flex items-center gap-1">
-              <span>${test.extendedDate ? `<span class="text-amber-700 font-bold">~${test.extendedDate} ${test.extendedEndTime || '23:59'} (연장)</span>` : (timeStr || '23:59까지')}</span>
-              <button onclick="App.openRescheduleModal('${test.id}')" class="text-indigo-600 hover:text-indigo-800 font-bold hover:underline ml-1" title="시험 일정 이동">
-                [이동]
-              </button>
-              <button onclick="App.openExtendTestModal('${test.id}')" class="text-amber-600 hover:text-amber-800 font-bold hover:underline ml-0.5" title="마감 시간 연장">
-                [연장]
-              </button>
-            </div>
-          </td>
-
-          <!-- 시험명 & 범위 -->
-          <td class="py-3.5 px-4 max-w-xs">
-            <div class="font-bold text-slate-900 text-sm hover:text-indigo-600 cursor-pointer flex items-center gap-1.5" onclick="App.openTestDetailModal('${test.id}')">
-              ${test.type === 'PRACTICE' ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">문제풀이</span>' : (test.type === 'TEXT_MEMORIZE' ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">본문암기</span>' : (test.type === 'VOCAB' ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-violet-100 text-violet-800">단어</span>' : '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800">기존 시험</span>'))}
-              <span>${this.escapeHtml(test.title)}</span>
-            </div>
-            <div class="text-xs text-slate-500 truncate mt-0.5">${this.escapeHtml(test.scope || '-')}</div>
-          </td>
-
-          <!-- 커트라인 / 점수 -->
-          <td class="py-3.5 px-4 whitespace-nowrap">
-            <div class="text-xs text-slate-600">컷: <strong class="text-slate-800">${this.escapeHtml(test.cutoff || '-')}</strong></div>
-            ${test.type === 'VOCAB' && test.vocabQuestionCounts ? `<div class="text-[10px] text-violet-700 font-semibold">문항: 객 ${test.vocabQuestionCounts[2] || 40} · 스 ${test.vocabQuestionCounts[3] || 40} · 통 ${test.vocabQuestionCounts[4] || 40}</div>` : ''}
-            <div class="text-xs">점수: <strong class="${test.score ? 'text-indigo-600 font-bold' : 'text-slate-400'}">${test.score || '-'}</strong></div>
-          </td>
-
-          <!-- 1차 본시험 결과 (빠른 상태 변경 토글 버튼) -->
-          <td class="py-3.5 px-4 whitespace-nowrap">
-            ${test.type === 'PRACTICE' ? `
-              ${test.practiceResult || test.status === 'PASS' ? `
-                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                  <i class="fa-solid fa-check"></i> 응시 완료 (${test.practiceResult?.score != null ? test.practiceResult.score + '점' : 'PASS'})
-                </span>
-              ` : `
-                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
-                  <i class="fa-regular fa-clock"></i> 미응시
-                </span>
-              `}
-            ` : `
+      return this.renderAdminExamRow(test, {
+        status: test.type === 'PRACTICE'
+          ? this.renderAdminExamBadge(test.practiceResult || test.status === 'PASS' ? '응시 완료' : '미응시', test.practiceResult || test.status === 'PASS' ? 'emerald' : 'slate')
+          : `
               <div class="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 text-xs">
                 <button onclick="App.quickUpdateTestStatus('${test.id}', 'SCHEDULED')" class="px-2 py-1 rounded-md font-semibold transition ${test.status === 'SCHEDULED' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}">대기</button>
                 <button onclick="App.quickUpdateTestStatus('${test.id}', 'PASS')" class="px-2 py-1 rounded-md font-semibold transition ${test.status === 'PASS' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}">통과</button>
                 <button onclick="App.quickUpdateTestStatus('${test.id}', 'FAIL')" class="px-2 py-1 rounded-md font-semibold transition ${test.status === 'FAIL' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}">불합격</button>
               </div>
-            `}
-          </td>
-
-          <!-- 재시험 결과 / 허용 관리 -->
-          <td class="py-3.5 px-4 whitespace-nowrap">
-            ${test.type === 'PRACTICE' ? `
-              <div class="flex items-center gap-1.5">
-                <span class="text-xs text-slate-400 font-medium px-2 py-1 rounded bg-slate-50 border border-slate-200">
-                  재시험 없음
-                </span>
-                ${test.practiceResult || test.status === 'PASS' ? `
-                  <button type="button" onclick="App.viewPracticeTestResultDetail('${test.id}')" class="px-2 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition" title="학생 풀이 답안 & 정답·해설 확인">
-                    <i class="fa-solid fa-file-circle-check mr-1"></i>결과 확인
-                  </button>
-                ` : ''}
-              </div>
-            ` : (test.type === 'TEXT_MEMORIZE' ? `
-              <div class="flex items-center gap-1.5">
-                <button onclick="App.toggleTextMemorizeAllowRetest('${test.id}')" class="px-2.5 py-1 rounded-lg text-xs font-bold transition ${test.allowRetest ? 'bg-amber-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'}">
-                  <i class="fa-solid ${test.allowRetest ? 'fa-check' : 'fa-rotate-right'} mr-1"></i>${test.allowRetest ? '재시험 허용중' : '재시험 허용하기'}
-                </button>
-                <button type="button" onclick="App.viewTextMemorizeExamPaper('${test.id}')" class="px-2 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition" title="본문암기 시험지 및 학생 답안/정답표 확인">
-                  <i class="fa-solid fa-file-lines mr-1"></i>시험지
-                </button>
-              </div>
-            ` : `
-              <div class="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 text-xs">
-                <button onclick="App.quickUpdateRetestStatus('${test.id}', 'NONE')" class="px-2 py-1 rounded-md font-semibold transition ${test.retestStatus === 'NONE' ? 'bg-slate-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}">없음</button>
-                <button onclick="App.quickUpdateRetestStatus('${test.id}', 'RETEST_PENDING')" class="px-2 py-1 rounded-md font-semibold transition ${test.retestStatus === 'RETEST_PENDING' ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}">대기</button>
-                <button onclick="App.quickUpdateRetestStatus('${test.id}', 'RETEST_PASS')" class="px-2 py-1 rounded-md font-semibold transition ${test.retestStatus === 'RETEST_PASS' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}">통과</button>
-                <button onclick="App.quickUpdateRetestStatus('${test.id}', 'RETEST_FAIL')" class="px-2 py-1 rounded-md font-semibold transition ${test.retestStatus === 'RETEST_FAIL' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}">탈락</button>
-              </div>
-              ${test.retestDate ? `<div class="text-[11px] text-slate-400 mt-1 font-medium">재시험일: ${test.retestDate}</div>` : ''}
-            `)}
-          </td>
-
-          <!-- 관리 버튼 -->
-          <td class="py-3.5 px-4 text-center whitespace-nowrap">
-            <div class="flex items-center justify-center space-x-1.5">
+            `,
+        actions: `
               ${test.type === 'PRACTICE' ? `
                 ${test.practiceResult || test.status === 'PASS' ? `
                   <button type="button" onclick="App.viewPracticeTestResultDetail('${test.id}')" class="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition" title="학생 답안 및 정답·해설 결과 확인">
@@ -3296,10 +3262,8 @@ const App = {
               <button onclick="App.confirmDeleteTest('${test.id}')" class="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition" title="삭제">
                 <i class="fa-solid fa-trash-can"></i>
               </button>
-            </div>
-          </td>
-        </tr>
-      `;
+        `
+      });
     }).join('');
   },
 
@@ -3462,39 +3426,6 @@ const App = {
 
     const students = AppData.getStudents();
     container.innerHTML = `
-      <div class="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-3">
-        <div class="flex items-center space-x-3">
-          <div class="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center text-sm shadow-sm flex-shrink-0">
-            <i class="fa-solid fa-user-plus"></i>
-          </div>
-          <div>
-            <span class="text-xs font-bold text-indigo-600">새 학생 프로필</span>
-            <h4 class="font-bold text-slate-900">학생 추가</h4>
-          </div>
-        </div>
-        <div class="space-y-2 text-xs">
-          <div>
-            <label class="block font-bold text-slate-600 mb-0.5">학생 이름</label>
-            <input type="text" id="newStudentName" placeholder="예: 홍길동" class="w-full py-2 px-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 bg-white" />
-          </div>
-          <div>
-            <label class="block font-bold text-slate-600 mb-0.5">학습 목표</label>
-            <input type="text" id="newStudentTarget" placeholder="예: 내신 영어 1등급" class="w-full py-2 px-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 bg-white" />
-          </div>
-          <div>
-            <label class="block font-bold text-slate-600 mb-0.5">사용 권한</label>
-            <select id="newStudentAccessMode" class="w-full py-2 px-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 bg-white">
-              <option value="FULL">전체 기능 사용</option>
-              <option value="CALENDAR_ONLY">영어 학습 캘린더만 사용</option>
-            </select>
-          </div>
-        </div>
-        <div class="pt-2 flex justify-end">
-          <button onclick="App.handleAddStudentProfile()" class="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 transition shadow-sm">
-            학생 프로필 추가
-          </button>
-        </div>
-      </div>
       ${students.map(student => {
       return `
         <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
@@ -3552,23 +3483,6 @@ const App = {
     } catch (error) {
       console.error(error);
       this.toast('학생 프로필 저장에 실패했습니다.', 'error');
-    }
-  },
-
-  async handleAddStudentProfile() {
-    const name = document.getElementById('newStudentName').value.trim();
-    const target = document.getElementById('newStudentTarget').value.trim();
-    const accessMode = document.getElementById('newStudentAccessMode').value;
-    if (!name) { this.toast('학생 이름을 입력해주세요.', 'error'); return; }
-
-    try {
-      const student = await AppData.addStudent({ name, target, accessMode });
-      this.state.adminSelectedStudentId = student.id;
-      this.toast(`${student.name} 학생 계정이 추가되었습니다.`, 'success');
-      this.renderAdminStudentsTab();
-    } catch (error) {
-      console.error(error);
-      this.toast('학생 프로필 추가에 실패했습니다.', 'error');
     }
   },
 

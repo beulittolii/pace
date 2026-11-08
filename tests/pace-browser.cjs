@@ -207,11 +207,13 @@ const server = http.createServer((req, res) => {
   await page.evaluate(() => { AppData.assignGrammarTest = window.originalAssignGrammarTest; });
   await page.waitForFunction(() => document.getElementById('adminTestFormModal').classList.contains('hidden'));
   const vocabRow = page.locator('#adminTestsTableBody tr').filter({ hasText: 'VOCAB 일정' });
-  assert.equal(await vocabRow.locator('td:nth-child(2)>div:first-child>span:first-child').innerText(), '단어');
+  assert.equal(await vocabRow.locator('.admin-exam-type').innerText(), '단어');
+  assert.deepEqual(await page.locator('#adminTestsTableBody tr').evaluateAll(rows => rows.map(row => row.cells.length)), await page.locator('#adminTestsTableBody tr').evaluateAll(rows => rows.map(() => 5)));
+  assert.deepEqual(await page.locator('#adminTabContentTests thead th').allTextContents(), ['일시', '시험명 & 범위', '기준 / 점수', '상태', '관리']);
   for (const width of [390, 768, 1440]) {
     await page.setViewportSize({ width, height: 950 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    assert.equal(await vocabRow.locator('td:nth-child(2)>div:first-child>span:first-child').evaluate(el => getComputedStyle(el).whiteSpace), 'nowrap');
+    assert.equal(await vocabRow.locator('.admin-exam-type').evaluate(el => getComputedStyle(el).whiteSpace), 'nowrap');
     await page.screenshot({ path: `/private/tmp/pace-admin-types-${width}.png`, fullPage: true });
   }
   await page.evaluate(() => App.showLanding());

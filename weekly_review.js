@@ -162,6 +162,17 @@ Object.assign(App, {
   },
   renderWeeklyReviewAdminRow(test) {
     const result = AppData.getWeeklyReviewResult(test.id), blocked = test.status === 'REVIEW_DATA_NEEDED';
-    return `<tr class="border-b border-slate-100"><td class="p-4 text-xs">${this.escapeHtml(test.date)}</td><td class="p-4 font-bold">주간 복습<p class="text-xs font-normal text-slate-500">${this.escapeHtml(test.scope)}</p></td><td class="p-4 text-xs">${blocked ? '<span class="text-amber-700 font-bold">자료 확인 필요</span>' : test.reviewStage === 'LOCKED' ? `응시 잠김 (${test.completedDays || 0}/${test.requiredDays ?? 5}일 완료)` : test.reviewStage === 'EXCLUDED' ? '전체 요일 제외' : test.reviewStage === 'NO_ERRORS' ? '오답 없음 · 복습 완료' : result?.completed ? '복습 완료' : '복습 예정 / 진행 중'}</td><td class="p-4 text-xs">${result ? `현재 점수 ${result.rounds[result.rounds.length - 1].score}점 · 남은 ${result.remainingIds.length}개` : test.reviewStage === 'LOCKED' ? '완수 후 출제' : `${test.questions.length}개 단어`}</td><td class="p-4 text-xs">${result?.rounds.length || 0}회차</td><td class="p-4"><div class="flex items-center gap-3"><button type="button" class="text-indigo-600 text-xs font-bold" onclick="App.openWeeklyReviewModal('${test.id}')">상세 확인</button>${this.state.isAdminLoggedIn ? `<button type="button" class="text-rose-600 text-xs font-bold disabled:opacity-50" onclick="App.confirmDeleteWeeklyReview('${test.id}')" ${this._weeklyReviewDeleting ? 'disabled' : ''} aria-label="주간 복습 삭제"><i class="fa-solid fa-trash-can" aria-hidden="true"></i> 삭제</button>` : ''}</div></td></tr>`;
+    const label = blocked ? '자료 확인 필요' : test.reviewStage === 'LOCKED' ? '응시 잠김' : test.reviewStage === 'EXCLUDED' ? '전체 요일 제외' : test.reviewStage === 'NO_ERRORS' ? '오답 없음 · 복습 완료' : result?.completed ? '복습 완료' : result ? '진행 중' : '미응시';
+    const tone = blocked ? 'amber' : result?.completed || test.reviewStage === 'NO_ERRORS' ? 'emerald' : result ? 'blue' : 'slate';
+    const progress = test.reviewStage === 'LOCKED' ? `${test.completedDays || 0}/${test.requiredDays ?? 5}일 완료 · 완수 후 출제` : result ? `남은 ${result.remainingIds.length}개` : `${test.questions?.length || 0}개 단어`;
+    const latest = result?.rounds?.[result.rounds.length - 1];
+    return this.renderAdminExamRow(test, {
+      open: `App.openWeeklyReviewModal('${test.id}')`,
+      cutoff: '-',
+      score: latest?.score != null ? `${latest.score}점` : '-',
+      status: this.renderAdminExamBadge(label, tone) + `<div class="text-[11px] text-slate-500 mt-1">${this.escapeHtml(progress)}</div>`,
+      actions: this.renderAdminExamAction('상세 확인', `App.openWeeklyReviewModal('${test.id}')`, 'fa-file-lines')
+        + (this.state.isAdminLoggedIn ? this.renderAdminExamAction('주간 복습 삭제', `App.confirmDeleteWeeklyReview('${test.id}')`, 'fa-trash-can', 'rose', Boolean(this._weeklyReviewDeleting)) : '')
+    });
   }
 });

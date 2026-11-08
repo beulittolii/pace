@@ -471,7 +471,20 @@ Object.assign(App, {
     this.showModal('grammarResultModal');
   },
   renderGrammarAdminRow(test) {
-    return `<tr class="hover:bg-slate-50"><td class="py-3.5 px-4 whitespace-nowrap"><strong>${this.escapeHtml(test.date)}</strong><p class="text-xs mt-1">${this.escapeHtml(test.time)}~${this.escapeHtml(test.endTime)}</p></td><td class="py-3.5 px-4"><button type="button" onclick="App.openGrammarTestModal('${test.id}')" class="font-bold text-violet-800 text-left">문법 · ${this.escapeHtml(test.title)}</button><p class="text-xs text-slate-500 mt-1">${this.escapeHtml(test.grammarParts.map(part => GrammarLogic.label(part)).join(' + '))}</p></td><td class="py-3.5 px-4 text-xs">각 영역 80점 이상</td><td class="py-3.5 px-4 text-xs space-y-2">${test.grammarParts.map(part => `<p>${GrammarLogic.label(part)}: <strong>${this.grammarStatus(test, part)}</strong></p>`).join('')}</td><td class="py-3.5 px-4">${this.grammarButton('결과 / 채점', `App.openGrammarTestModal('${test.id}')`, true)}</td><td class="py-3.5 px-4">${this.grammarButton('수정', `App.openGrammarAssignmentModal('${test.id}')`, true)} ${this.grammarButton('삭제', `App.deleteGrammarTest('${test.id}')`, true)}</td></tr>`;
+    const labels = { UNASSIGNED: '미배정', SCHEDULED: '미응시', IN_PROGRESS: '응시 중', PENDING: '채점 대기', PASS: '통과', FAIL: '불합격' };
+    const tones = { IN_PROGRESS: 'blue', PENDING: 'amber', PASS: 'emerald', FAIL: 'rose' };
+    return this.renderAdminExamRow(test, {
+      open: `App.openGrammarTestModal('${test.id}')`,
+      scope: test.grammarParts.map(part => GrammarLogic.label(part)).join(' + ') + (test.scope ? ` · ${test.scope}` : ''),
+      cutoff: '각 영역 80점 이상',
+      score: test.grammarParts.map(part => `${GrammarLogic.label(part)} ${test.grammarResults?.[part]?.score != null ? test.grammarResults[part].score + '점' : '-'}`).join(' · '),
+      status: test.grammarParts.map(part => {
+        const state = GrammarLogic.partState(test, part);
+        return `<div class="flex items-center gap-1.5 mb-1 last:mb-0"><span class="text-xs text-slate-500">${GrammarLogic.label(part)}</span>${this.renderAdminExamBadge(labels[state] || '미응시', tones[state])}</div>`;
+      }).join(''),
+      actions: this.renderAdminExamAction('수정', `App.openGrammarAssignmentModal('${test.id}')`, 'fa-pen-to-square')
+        + this.renderAdminExamAction('삭제', `App.deleteGrammarTest('${test.id}')`, 'fa-trash-can', 'rose')
+    });
   }
 });
 
