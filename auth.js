@@ -73,6 +73,17 @@
       this.admin = admin.exists() && admin.data().enabled === true;
       this.member = member.exists() ? member.data() : null;
     },
+    setLoginPasswordVisible(visible) {
+      const input = document.getElementById('studentLoginPassword');
+      const button = document.getElementById('loginPasswordToggle');
+      input.type = visible ? 'text' : 'password';
+      button.setAttribute('aria-label', visible ? '비밀번호 숨기기' : '비밀번호 표시');
+      button.setAttribute('aria-pressed', String(visible));
+      button.querySelector('i').className = visible ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+    },
+    toggleLoginPassword() {
+      this.setLoginPasswordVisible(document.getElementById('studentLoginPassword').type === 'password');
+    },
     async login(event) {
       event?.preventDefault();
       if (this.busy) return;
@@ -81,9 +92,11 @@
       this.busy = true; button.disabled = true; error.classList.add('hidden');
       try {
         await this.ready();
-        await this.f.setPersistence(this.auth, document.getElementById('rememberLogin').checked ? this.f.browserLocalPersistence : this.f.browserSessionPersistence);
+        await this.f.setPersistence(this.auth, document.getElementById('rememberLogin').checked ? this.f.browserLocalPersistence : this.f.inMemoryPersistence);
         this.managed = true;
         await this.f.signInWithEmailAndPassword(this.auth, this.email(document.getElementById('studentLoginId').value), document.getElementById('studentLoginPassword').value);
+        document.getElementById('studentLoginPassword').value = '';
+        this.setLoginPasswordVisible(false);
         this.observedUid = this.auth.currentUser.uid;
         await this.enter();
       } catch (e) { error.textContent = this.error(e); error.classList.remove('hidden'); }
@@ -171,7 +184,7 @@
     },
     async logout() {
       this.managed = true; this.observedUid = null;
-      try { await this.f.signOut(this.auth); this.clearData(); this.close(); document.querySelector('#landingView form').reset(); await App.showLanding(); }
+      try { await this.f.signOut(this.auth); this.clearData(); this.close(); document.querySelector('#landingView form').reset(); this.setLoginPasswordVisible(false); await App.showLanding(); }
       finally { this.managed = false; }
     },
     open(step = 0) {

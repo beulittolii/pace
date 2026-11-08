@@ -21,6 +21,14 @@ const server=http.createServer((req,res)=>{
   for(const file of ['weekly_review_logic.js','grammar_data.js','data.js','grammar_store.js','weekly_review_store.js','app.js','grammar.js','weekly_review.js','pace.js','auth.js','auth-data.js']) await page.addScriptTag({content:fs.readFileSync(path.join(root,file),'utf8')});
   await page.evaluate(()=>{App.init();document.getElementById('initialLoadingSkeleton')?.remove();});
   assert.equal(await page.locator('#rememberLogin').isChecked(),false);
+  assert.equal(await page.getByText('비밀번호를 잊으셨나요? 관리자에게 문의해주세요.',{exact:true}).count(),0);
+  await page.locator('#studentLoginPassword').fill('password123');
+  await page.getByRole('button',{name:'비밀번호 표시',exact:true}).click();
+  assert.equal(await page.locator('#studentLoginPassword').getAttribute('type'),'text');
+  assert.equal(await page.locator('#studentLoginPassword').inputValue(),'password123');
+  assert.equal(await page.locator('#loginPasswordToggle').getAttribute('aria-pressed'),'true');
+  await page.getByRole('button',{name:'비밀번호 숨기기',exact:true}).click();
+  assert.equal(await page.locator('#studentLoginPassword').getAttribute('type'),'password');
   await page.getByRole('button',{name:/처음이신가요/}).click();
   assert.match(await page.locator('[data-step="0"]').innerText(),/PACE에 오신 것을/);
   assert.equal(await page.locator('#inviteCode').isVisible(),false);
@@ -45,14 +53,16 @@ const server=http.createServer((req,res)=>{
   await page.screenshot({path:'/private/tmp/pace-signup-mobile.png',fullPage:true});
   await page.evaluate(()=>{
     window.authCalls=[];
-    PaceAuth.ready=async function(){this.auth={};this.f={browserLocalPersistence:'local',browserSessionPersistence:'session',setPersistence:async(a,p)=>authCalls.push(p),signInWithEmailAndPassword:async()=>authCalls.push('login')};};
+    PaceAuth.ready=async function(){this.auth={};this.f={browserLocalPersistence:'local',inMemoryPersistence:'memory',setPersistence:async(a,p)=>authCalls.push(p),signInWithEmailAndPassword:async(a)=>{authCalls.push('login');a.currentUser={uid:'test-student'};}};};
     PaceAuth.enter=async()=>{};
   });
   await page.getByRole('button',{name:'← 로그인',exact:true}).click();
   await page.locator('#studentLoginId').fill('test_student');await page.locator('#studentLoginPassword').fill('password123');
   await page.locator('#landingView form button[type=submit]').click();
   await page.waitForFunction(()=>authCalls.length===2);
-  assert.deepEqual(await page.evaluate(()=>authCalls),['session','login']);
+  assert.deepEqual(await page.evaluate(()=>authCalls),['memory','login']);
+  assert.equal(await page.locator('#studentLoginPassword').inputValue(),'');
+  await page.locator('#studentLoginPassword').fill('password123');
   await page.locator('#rememberLogin').check();await page.locator('#landingView form button[type=submit]').click();
   await page.waitForFunction(()=>authCalls.length===4);
   assert.deepEqual(await page.evaluate(()=>authCalls.slice(2)),['local','login']);

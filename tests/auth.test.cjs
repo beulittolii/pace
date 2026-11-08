@@ -43,6 +43,79 @@ function passwordFixture() {
   return {auth,fields,calls,controls};
 }
 
+function loginFixture(remember = false) {
+  const vm = require('node:vm');
+  const fs = require('node:fs');
+  const icon = {className:'fa-solid fa-eye'};
+  const fields = {
+    studentLoginId:{value:' Student_1 '}, studentLoginPassword:{value:'my-password',type:'password'},
+    rememberLogin:{checked:remember}, loginError:{textContent:'',classList:{add(){},remove(){}}},
+    loginPasswordToggle:{attributes:{},setAttribute(key,value){this.attributes[key]=value;},querySelector(){return icon;}}
+  };
+  const button = {disabled:false};
+  const window = {document:{}};
+  vm.runInNewContext(fs.readFileSync(require.resolve('../auth.js'),'utf8'), {
+    window, document:{getElementById:id=>fields[id],querySelector:()=>button}
+  });
+  const auth = window.PaceAuth, calls = [];
+  auth.ready = async()=>{};
+  auth.auth = {currentUser:null};
+  auth.f = {
+    browserLocalPersistence:'local',inMemoryPersistence:'memory',browserSessionPersistence:'session',
+    setPersistence:async(a,p)=>calls.push(['persistence',p]),
+    signInWithEmailAndPassword:async(a,email,password)=>{calls.push(['login',email,password]);a.currentUser={uid:'student1'};}
+  };
+  auth.enter = async()=>calls.push(['enter']);
+  return {auth,fields,icon,button,calls};
+}
+
+test('unchecked auto-login uses memory only; checked auto-login uses persistent local storage', async()=>{
+  for (const remember of [false,true]) {
+    const {auth,fields,button,calls}=loginFixture(remember);
+    await auth.login();
+    assert.deepEqual(calls,[['persistence',remember?'local':'memory'],['login','student_1@accounts.pace.invalid','my-password'],['enter']]);
+    assert.equal(fields.studentLoginPassword.value,'');
+    assert.equal(fields.studentLoginPassword.type,'password');
+    assert.equal(button.disabled,false);
+    assert.equal(auth.busy,false);
+  }
+});
+
+test('password eye toggles masking, accessible label and pressed state without changing the password', ()=>{
+  const {auth,fields,icon}=loginFixture();
+  auth.toggleLoginPassword();
+  assert.equal(fields.studentLoginPassword.type,'text');
+  assert.equal(fields.studentLoginPassword.value,'my-password');
+  assert.equal(fields.loginPasswordToggle.attributes['aria-label'],'비밀번호 숨기기');
+  assert.equal(fields.loginPasswordToggle.attributes['aria-pressed'],'true');
+  assert.equal(icon.className,'fa-solid fa-eye-slash');
+  auth.toggleLoginPassword();
+  assert.equal(fields.studentLoginPassword.type,'password');
+  assert.equal(fields.studentLoginPassword.value,'my-password');
+  assert.equal(fields.loginPasswordToggle.attributes['aria-label'],'비밀번호 표시');
+  assert.equal(fields.loginPasswordToggle.attributes['aria-pressed'],'false');
+  assert.equal(icon.className,'fa-solid fa-eye');
+});
+
+test('successful login hides a revealed password and clears it', async()=>{
+  const {auth,fields}=loginFixture();
+  auth.toggleLoginPassword();
+  await auth.login();
+  assert.equal(fields.studentLoginPassword.type,'password');
+  assert.equal(fields.studentLoginPassword.value,'');
+  assert.equal(fields.loginPasswordToggle.attributes['aria-pressed'],'false');
+});
+
+test('persistence failures cannot sign in with an unintended remembered session', async()=>{
+  const {auth,fields,calls,button}=loginFixture();
+  auth.f.setPersistence=async()=>{throw Error('persistence unavailable');};
+  await auth.login();
+  assert.equal(calls.length,0);
+  assert.equal(fields.loginError.textContent,'persistence unavailable');
+  assert.equal(button.disabled,false);
+  assert.equal(auth.busy,false);
+});
+
 test('password changes reauthenticate the current account before updating and clear secrets', async()=>{
   const {auth,fields,calls,controls}=passwordFixture();
   await auth.changePassword();
