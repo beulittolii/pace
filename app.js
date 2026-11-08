@@ -5103,6 +5103,8 @@ const App = {
     const test = allTests.find(t => t.id === testId);
     if (!test) return;
 
+    if (test.type === 'VOCAB_REVIEW') return this.confirmDeleteWeeklyReview(testId);
+
     if (confirm(`'${test.title}' 시험 일정을 정말 삭제하시겠습니까?`)) {
       try {
         await AppData.deleteTest(testId);

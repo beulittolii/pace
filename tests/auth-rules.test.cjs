@@ -76,3 +76,19 @@ test('academic storage and grammar/weekly writes remain scoped to the student',a
  await env.withSecurityRulesDisabled(c=>f.setDoc(f.doc(c.firestore(),'tests','grammar'),{studentId:id,type:'GRAMMAR',grammarStage:'concept'}));
  await assertSucceeds(f.updateDoc(f.doc(db,'tests','grammar'),{grammarStartedAt:new Date().toISOString(),grammarResults:{},grammarStage:'practice'}));
 });
+
+test('only teachers can delete weekly reviews and modify automatic-regeneration suppression',async()=>{
+ const {auth,db}=engine('student1');await auth.redeem('AB12CD');
+ const id=(await f.getDoc(f.doc(db,'members','student1'))).data().studentId;
+ const reviewId=`weekly_review_${id}_2026-11-02`;
+ const teacher=env.authenticatedContext('teacher').firestore();
+ await assertSucceeds(f.setDoc(f.doc(teacher,'tests',reviewId),{id:reviewId,type:'VOCAB_REVIEW',studentId:id,weekStart:'2026-11-02'}));
+ await assertFails(f.deleteDoc(f.doc(db,'tests',reviewId)));
+ await assertFails(f.updateDoc(f.doc(db,'students',String(id)),{deletedWeeklyReviewIds:[reviewId]}));
+ const batch=f.writeBatch(teacher);
+ batch.update(f.doc(teacher,'students',String(id)),{deletedWeeklyReviewIds:[reviewId]});
+ batch.delete(f.doc(teacher,'tests',reviewId));
+ await assertSucceeds(batch.commit());
+ assert.deepEqual((await f.getDoc(f.doc(db,'students',String(id)))).data().deletedWeeklyReviewIds,[reviewId]);
+ await assertFails(f.updateDoc(f.doc(db,'students',String(id)),{deletedWeeklyReviewIds:[]}));
+});

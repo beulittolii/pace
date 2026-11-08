@@ -48,7 +48,8 @@ async function loadApp(page) {
         return result;
       }
     };
-    FirebaseStore.students = [{ id: 501, name: '문법 테스트 학생', target: '가정법 이해' }];
+    if (!testDocuments.has('students/501')) testDocuments.set('students/501', { id: 501, name: '문법 테스트 학생', target: '가정법 이해' });
+    FirebaseStore.students = [structuredClone(testDocuments.get('students/501'))];
     FirebaseStore.tests = [...testDocuments].filter(([key]) => key.startsWith('tests/')).map(([,value]) => value);
     FirebaseStore.vocabReviewResults = [...testDocuments].filter(([key]) => key.startsWith('vocabReviewResults/')).map(([,value]) => value);
     App.state.isAdminLoggedIn = true;
@@ -123,6 +124,7 @@ async function loadApp(page) {
   await page.screenshot({path:'/tmp/yem-weekly-review-excluded-mobile.png',fullPage:true});
   await page.evaluate(id=>{App.state.isAdminLoggedIn=false;App.openWeeklyReviewModal(id)},id);
   assert.equal(await page.locator('[name="weeklyReviewExcludedDay"]').count(),0,'student cannot configure exclusions');
+  assert.equal(await page.locator('#weeklyReviewDelete').count(),0,'student cannot delete reviews');
   assert.equal(await page.locator('.weekly-review-day-circle.is-excluded').count(),3);
   await page.evaluate(id=>{App.state.isAdminLoggedIn=true;App.openWeeklyReviewModal(id)},id);
   await page.getByRole('checkbox',{name:'화요일 제외'}).uncheck();
@@ -243,6 +245,34 @@ async function loadApp(page) {
   const previewAfter=await page.evaluate(()=>{const t=AppData.getTests().find(t=>t.id==='completed_preview');return {questions:JSON.stringify(t.questions),result:JSON.stringify(t.weeklyReviewResult)}});
   assert.deepEqual(previewAfter,previewBefore,'preview questions and submitted grades are unchanged');
   await page.screenshot({path:'/tmp/yem-completed-preview-day-controls.png',fullPage:true});
+  // Delete from the modal: cancel, failed save/retry, then success.
+  assert.equal(await page.locator('#weeklyReviewDelete').isVisible(),true);
+  page.once('dialog',dialog=>dialog.dismiss());
+  await page.locator('#weeklyReviewDelete').click();
+  assert.equal(await page.evaluate(()=>testDocuments.has('tests/completed_preview')),true,'cancel preserves preview');
+  await page.evaluate(()=>{window.failNextTransaction=true;});
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('#weeklyReviewDelete').click();
+  await page.waitForFunction(()=>!App._weeklyReviewDeleting);
+  assert.equal(await page.evaluate(()=>AppData.getTests().some(t=>t.id==='completed_preview')),true,'failed delete preserves preview');
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('#weeklyReviewDelete').click();
+  await page.waitForFunction(()=>!testDocuments.has('tests/completed_preview'));
+  await page.locator('#testDetailModal').waitFor({state:'hidden'});
+  assert.equal(await page.evaluate(()=>AppData.getWeeklyReviewResult('completed_preview')),null);
+  // Delete a completed real review from the administrator list as well.
+  await page.evaluate(()=>App.showAdminDashboard());
+  const reviewRow=page.locator('#adminTestsTableBody tr').filter({has:page.locator(`button[onclick="App.openWeeklyReviewModal('${id}')"]`)});
+  page.once('dialog',dialog=>dialog.accept());
+  await reviewRow.getByRole('button',{name:'주간 복습 삭제',exact:true}).click();
+  await page.waitForFunction(id=>!AppData.getTests().some(t=>t.id===id),id);
+  assert.equal(await page.evaluate(id=>testDocuments.has('tests/'+id),id),false);
+  assert.equal(await page.evaluate(()=>testDocuments.get('vocabTestResults/source_result').questionDetails.filter(q=>!q.isCorrect).length),2,'deleting review preserves original grades');
+  await setup();
+  await page.evaluate(()=>{FirebaseStore.reviewSourcesReady={tests:true,vocabSets:true,vocabTestResults:true};AppData.queueWeeklyReviews();});
+  await page.waitForTimeout(400);
+  assert.equal(await page.evaluate(id=>AppData.getTests().some(t=>t.id===id),id),false,'deletion survives reload and automatic generation');
+  assert.equal(await page.evaluate(id=>AppData.isWeeklyReviewDeleted(id,501),id),true);
   assert.deepEqual(errors,[]);
-  console.log('Weekly review browser checks passed: readiness, generation, KST opening, unified modal, all questions on one page, progress counter, blank confirmation/cancel, save retry, reload, 3 rounds, score preservation, mobile/desktop.');
+  console.log('Weekly review browser checks passed: readiness, generation, KST opening, unified modal, all questions on one page, progress counter, blank confirmation/cancel, save retry, reload, 3 rounds, score preservation, mobile/desktop, admin deletion from list/modal, cancellation, failed-delete retry, no regeneration.');
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{if(browser) await browser.close();server.close();});

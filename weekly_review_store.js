@@ -5,6 +5,9 @@ Object.assign(AppData, {
     if (result) FirebaseStore.vocabReviewResults = [...(FirebaseStore.vocabReviewResults || []).filter(r => r.id !== result.id), result];
     this.cacheGrammarTests([test]);
   },
+  isWeeklyReviewDeleted(id, studentId) {
+    return Boolean((FirebaseStore.students || []).find(s => Number(s.id) === Number(studentId))?.deletedWeeklyReviewIds?.includes(id));
+  },
   queueWeeklyReviews() {
     if (this._weeklyReviewRunning) { this._weeklyReviewDirty = true; return; }
     if (this._weeklyReviewTimer || !this.isFirebaseReady()) return;
@@ -21,6 +24,7 @@ Object.assign(AppData, {
           weeks.set(WeeklyReviewLogic.id(t.studentId, monday), { studentId: t.studentId, monday });
         }
         for (const [id, group] of weeks) {
+          if (this.isWeeklyReviewDeleted(id, group.studentId)) continue;
           if (tests.some(t => t.id === id && !WeeklyReviewLogic.mutable(t))) continue;
           const existing = tests.find(t => t.id === id);
           const proposal = WeeklyReviewLogic.prepare({ tests, results: this.getVocabTestResults(), sets: this.getVocabSets(), ...group, excludedWeekdays: existing?.excludedWeekdays || [] });
@@ -41,6 +45,30 @@ Object.assign(AppData, {
     if (!test) throw new Error('복습 시험을 찾을 수 없습니다.');
     return this.createWeeklyReview({ studentId: test.studentId, monday: test.weekStart, reviewId: id, excludedWeekdays: WeeklyReviewLogic.normalizeExcludedWeekdays(excludedWeekdays) });
   },
+  async deleteWeeklyReview(id) {
+    if (!App.state.isAdminLoggedIn) throw new Error('관리자만 주간 복습을 삭제할 수 있습니다.');
+    if (!this.isFirebaseReady()) throw new Error('클라우드 연결 후 다시 시도해주세요.');
+    const target = this.getTests().find(t => t.id === id && t.type === 'VOCAB_REVIEW');
+    if (!target) throw new Error('복습 시험을 찾을 수 없습니다.');
+    const { doc, runTransaction } = window.firebaseFns;
+    const student = await runTransaction(window.firebaseDB, async tx => {
+      const ref = doc(window.firebaseDB, 'tests', id);
+      const studentRef = doc(window.firebaseDB, 'students', String(target.studentId));
+      const snapshot = await tx.get(ref);
+      const profile = await tx.get(studentRef);
+      if (!profile.exists()) throw new Error('학생 정보를 찾을 수 없습니다. 새로고침 후 다시 시도해주세요.');
+      if (snapshot.exists() && (snapshot.data().type !== 'VOCAB_REVIEW' || Number(snapshot.data().studentId) !== Number(target.studentId))) throw new Error('시험 정보가 변경되었습니다. 새로고침 후 다시 시도해주세요.');
+      // 원본 단어 일정은 남아 있어도 삭제한 복습 ID를 다시 자동 생성하지 않는다.
+      const updated = { ...profile.data(), deletedWeeklyReviewIds: [...new Set([...(profile.data().deletedWeeklyReviewIds || []), id])] };
+      tx.set(studentRef, updated);
+      tx.delete(ref);
+      return { ...updated, id: target.studentId };
+    });
+    FirebaseStore.students = [...(FirebaseStore.students || []).filter(s => Number(s.id) !== Number(student.id)), student].sort((a,b) => Number(a.id) - Number(b.id));
+    FirebaseStore.vocabReviewResults = (FirebaseStore.vocabReviewResults || []).filter(result => result.id !== id);
+    FirebaseStore.tests = this.getTests().filter(t => t.id !== id);
+    this.cacheGrammarTests([]);
+  },
   async createWeeklyReview({ studentId, monday, reviewId, excludedWeekdays }) {
     if (!this.isFirebaseReady()) throw new Error('클라우드 연결이 필요합니다.');
     const { doc, runTransaction } = window.firebaseFns;
@@ -59,6 +87,11 @@ Object.assign(AppData, {
     }
     const saved = await runTransaction(window.firebaseDB, async tx => {
       const ref = doc(window.firebaseDB, 'tests', id);
+      const profile = await tx.get(doc(window.firebaseDB, 'students', String(studentId)));
+      if (profile.exists() && profile.data().deletedWeeklyReviewIds?.includes(id)) {
+        if (configuring) throw new Error('관리자가 삭제한 주간 복습입니다.');
+        return null;
+      }
       const existing = await tx.get(ref);
       const current = existing.exists() ? existing.data() : null;
       if (configuring) {

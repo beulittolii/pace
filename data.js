@@ -1964,6 +1964,8 @@ const AppData = {
       return;
     }
 
+    if (existingTest.type === 'VOCAB_REVIEW') return this.deleteWeeklyReview(testId);
+
     // 단어 테스트 일정이면 연결된 응시 결과도 함께 삭제합니다.
     // 결과 문서는 testId를 기준으로 연결되어 있으므로
     // 같은 단어 세트를 사용하는 다른 시험의 결과는 건드리지 않습니다.

@@ -7,7 +7,7 @@ function fixture() {
   const documents = new Map();
   const context = vm.createContext({ console, setTimeout, clearTimeout, Date, Math });
   vm.runInContext(`
-    const FirebaseStore = { tests: [], vocabTestResults: [], vocabSets: [], vocabReviewResults: [] };
+    const FirebaseStore = { students: [{id:1,name:'학생'}], tests: [], vocabTestResults: [], vocabSets: [], vocabReviewResults: [] };
     const App = { state: { isAdminLoggedIn: true, selectedStudentId: 1 }, convertKorToEng: v => v === 'ㅁㅔㅔㅣㄷ' ? 'apple' : v };
     const AppData = {
       getTests: () => FirebaseStore.tests, getVocabTestResults: () => FirebaseStore.vocabTestResults, getVocabSets: () => FirebaseStore.vocabSets,
@@ -21,8 +21,8 @@ function fixture() {
     // Serial commits emulate Firestore's conflict retry outcome for concurrent callers.
     const task = transactionTail.then(async () => {
       const pending = [];
-      const result = await callback({ get: async ref => ({ exists: () => documents.has(ref), data: () => structuredClone(documents.get(ref)) }), set: (ref, value) => pending.push([ref, structuredClone(value)]) });
-      pending.forEach(([ref,value]) => documents.set(ref,value));
+      const result = await callback({ get: async ref => ({ exists: () => documents.has(ref), data: () => structuredClone(documents.get(ref)) }), set: (ref, value) => pending.push([ref, structuredClone(value)]), delete: ref => pending.push([ref,null]) });
+      pending.forEach(([ref,value]) => value === null ? documents.delete(ref) : documents.set(ref,value));
       return result;
     });
     transactionTail = task.catch(() => {});
@@ -41,7 +41,7 @@ function fixture() {
     const build = () => WeeklyReviewLogic.build({tests,results,sets,studentId:1,monday:'2026-11-02'});
     FirebaseStore.tests=tests; FirebaseStore.vocabTestResults=results; FirebaseStore.vocabSets=sets;
   `);
-  function persist() { for (const [collection,array] of [['tests',plain('tests')],['vocabTestResults',plain('results')],['vocabSets',plain('sets')]]) array.forEach(value => documents.set(`${collection}/${value.id}`,value)); }
+  function persist() { for (const [collection,array] of [['students',plain('FirebaseStore.students')],['tests',plain('tests')],['vocabTestResults',plain('results')],['vocabSets',plain('sets')]]) array.forEach(value => documents.set(`${collection}/${value.id}`,value)); }
   return { run, plain, documents, persist };
 }
 test('requires all five weekdays and every test final PASS including integrated admin grading', () => {
@@ -239,4 +239,73 @@ test('completed standalone preview permits excluding and restoring weekdays with
   const excluded=await f.run("AppData.configureWeeklyReviewDays('preview',[0,1,2,3,4])");assert.equal(excluded.reviewStage,'EXCLUDED');
   const restored=await f.run("AppData.configureWeeklyReviewDays('preview',[])");assert.equal(restored.reviewStage,'READY');assert.equal(restored.status,'PASS');assert.equal(restored.requiredDays,5);
   assert.equal(JSON.stringify(restored.weeklyReviewResult),originalResult);
+});
+
+test('admin deletes locked, ready, blocked and completed reviews without deleting source tests or grades', async () => {
+  for (const stage of ['LOCKED','READY','DATA_NEEDED','COMPLETE']) {
+    const f=fixture();f.persist();
+    const review=f.plain('build()');review.reviewStage=stage;
+    review.status=stage==='DATA_NEEDED'?'REVIEW_DATA_NEEDED':stage==='COMPLETE'?'PASS':'SCHEDULED';
+    review.weeklyReviewResult={id:review.id,studentId:1,completed:stage==='COMPLETE',rounds:[{number:1,score:50}]};
+    f.documents.set('tests/'+review.id,structuredClone(review));
+    f.run(`const id='${review.id}';FirebaseStore.tests.push(${JSON.stringify(review)});FirebaseStore.vocabReviewResults=[${JSON.stringify(review.weeklyReviewResult)}]`);
+    const before=JSON.stringify([...f.documents].filter(([key])=>key.startsWith('vocabTestResults/')||key.startsWith('tests/source')));
+    await f.run('AppData.deleteWeeklyReview(id)');
+    assert.equal(f.documents.has('tests/'+review.id),false);
+    assert.equal(f.run('AppData.getTests().some(t=>t.id===id)'),false);
+    assert.equal(f.run('AppData.getWeeklyReviewResult(id)'),null);
+    assert.deepEqual(f.documents.get('students/1').deletedWeeklyReviewIds,[review.id]);
+    assert.equal(f.run('AppData.isWeeklyReviewDeleted(id,1)'),true);
+    assert.equal(JSON.stringify([...f.documents].filter(([key])=>key.startsWith('vocabTestResults/')||key.startsWith('tests/source'))),before);
+  }
+});
+
+test('deleted reviews never regenerate, even from stale clients and concurrent generation', async () => {
+  const f=fixture();f.persist();
+  const review=await f.run("AppData.createWeeklyReview({studentId:1,monday:'2026-11-02'})");
+  f.run(`const id='${review.id}'`);
+  await Promise.all([f.run('AppData.deleteWeeklyReview(id)'),f.run("AppData.createWeeklyReview({studentId:1,monday:'2026-11-02'})")]);
+  assert.equal(f.documents.has('tests/'+review.id),false);
+  // Simulate another browser that has not received the updated student snapshot yet.
+  f.run('FirebaseStore.students=[{id:1}];FirebaseStore.tests=tests;App.state.isAdminLoggedIn=false');
+  assert.equal(await f.run("AppData.createWeeklyReview({studentId:1,monday:'2026-11-02'})"),null);
+  assert.equal(f.documents.has('tests/'+review.id),false);
+  await assert.rejects(f.run('AppData.submitWeeklyReviewRound(id,1,{})'),/찾을 수 없습니다/);
+});
+
+test('deleting a preview preserves other deletion markers and does not suppress the actual weekly review', async () => {
+  const f=fixture();f.run("FirebaseStore.students[0].deletedWeeklyReviewIds=['older-review']");f.persist();
+  const preview=f.plain('build()');preview.id='preview';preview.isPreview=true;
+  f.documents.set('tests/preview',preview);f.run(`FirebaseStore.tests.push(${JSON.stringify(preview)})`);
+  await f.run("AppData.deleteWeeklyReview('preview')");
+  assert.deepEqual(f.documents.get('students/1').deletedWeeklyReviewIds,['older-review','preview']);
+  assert.ok(await f.run("AppData.createWeeklyReview({studentId:1,monday:'2026-11-02'})"));
+});
+
+test('student, offline, invalid targets, changed ownership and failed deletes preserve existing records', async () => {
+  const f=fixture();f.persist();
+  const review=await f.run("AppData.createWeeklyReview({studentId:1,monday:'2026-11-02'})");
+  f.run(`const id='${review.id}';App.state.isAdminLoggedIn=false`);
+  await assert.rejects(f.run('AppData.deleteWeeklyReview(id)'),/관리자/);
+  f.run('App.state.isAdminLoggedIn=true;AppData.isFirebaseReady=()=>false');
+  await assert.rejects(f.run('AppData.deleteWeeklyReview(id)'),/클라우드/);
+  f.run('AppData.isFirebaseReady=()=>true');
+  await assert.rejects(f.run("AppData.deleteWeeklyReview('source0')"),/찾을 수 없습니다/);
+  f.documents.get('tests/'+review.id).studentId=2;
+  await assert.rejects(f.run('AppData.deleteWeeklyReview(id)'),/변경/);
+  f.documents.get('tests/'+review.id).studentId=1;
+  f.run("window.firebaseFns.runTransaction=async()=>{throw new Error('삭제 실패')}");
+  await assert.rejects(f.run('AppData.deleteWeeklyReview(id)'),/삭제 실패/);
+  assert.equal(f.documents.has('tests/'+review.id),true);
+  assert.equal(f.run('AppData.getTests().some(t=>t.id===id)'),true);
+  assert.equal(f.documents.get('students/1').deletedWeeklyReviewIds,undefined);
+});
+
+test('actual generic test deletion routes weekly reviews through persistent suppression', async () => {
+  const context=vm.createContext({console,Date,Math,setTimeout,clearTimeout,localStorage:{getItem:()=>null,setItem:()=>{}}});
+  const run=code=>vm.runInContext(code,context);
+  run(fs.readFileSync(path.join(__dirname,'..','data.js'),'utf8'));
+  run("FirebaseStore.tests=[{id:'review',type:'VOCAB_REVIEW',date:'2026-11-07'}];let deleted=null;AppData.deleteWeeklyReview=async id=>{deleted=id};AppData.removeDocument=async()=>{throw new Error('Must use review deletion')}");
+  await run("AppData.deleteTest('review')");
+  assert.equal(run('deleted'),'review');
 });
