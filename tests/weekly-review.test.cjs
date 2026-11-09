@@ -6,14 +6,15 @@ const path = require('node:path');
 function fixture() {
   const documents = new Map();
   const context = vm.createContext({ console, setTimeout, clearTimeout, Date, Math });
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'..','data.js'),'utf8'), context);
   vm.runInContext(`
-    const FirebaseStore = { students: [{id:1,name:'학생'}], tests: [], vocabTestResults: [], vocabSets: [], vocabReviewResults: [] };
+    Object.assign(FirebaseStore, { students: [{id:1,name:'학생'}], tests: [], vocabTestResults: [], vocabSets: [], vocabReviewResults: [] });
     const App = { state: { isAdminLoggedIn: true, selectedStudentId: 1 }, convertKorToEng: v => v === 'ㅁㅔㅔㅣㄷ' ? 'apple' : v };
-    const AppData = {
+    Object.assign(AppData, {
       getTests: () => FirebaseStore.tests, getVocabTestResults: () => FirebaseStore.vocabTestResults, getVocabSets: () => FirebaseStore.vocabSets,
       isFirebaseReady: () => true, getVocabTestResultDocumentId: r => r.id,
       cacheGrammarTests(records) { FirebaseStore.tests = [...FirebaseStore.tests.filter(t => !records.some(r => r.id === t.id)), ...records]; }
-    };
+    });
     const window = { firebaseDB: {} };
   `, context);
   let transactionTail = Promise.resolve();
@@ -86,6 +87,44 @@ test('30 error cap plus ten truly correct words; frequency then recency; distinc
 test('few correct words are not padded; missing choice materials request repair', () => {
   const f=fixture(); assert.equal(f.run('build().questions.length'),4);
   f.run('sets[0].words=words.slice(0,2)'); assert.equal(f.run('build().status'),'REVIEW_DATA_NEEDED');
+});
+
+test('choice-only source yields only choice review questions including correct words', () => {
+  const f=fixture();f.run('tests.forEach(t=>t.vocabQuestionCounts={2:10,3:0,4:0})');
+  assert.equal(f.run('build().questions.length'),4);
+  assert.equal(f.run('build().questions.every(q=>q.mode==="CHOICE")'),true);
+});
+
+test('spelling-only source yields only spelling review questions including correct words', () => {
+  const f=fixture();f.run('tests.forEach(t=>t.vocabQuestionCounts={2:0,3:10,4:0});results[0].direction=3');
+  assert.equal(f.run('build().questions.length'),4);
+  assert.equal(f.run('build().questions.every(q=>q.mode==="SPELLING")'),true);
+});
+
+test('disabled results cannot contribute errors, unknown words, sources or pending grading blockers', () => {
+  const f=fixture();f.run(`tests.forEach(t=>t.vocabQuestionCounts={2:10,3:0,4:0});
+    results.push({...results[0],id:'old-spelling',direction:3,questionDetails:[detail(44,false)]});
+    results.push({...results[0],id:'old-integrated',direction:4,passed:false,waitingGrading:true,questionDetails:[],wrongAnswers:[{question:'unknown',correct:'unknown'}]});`);
+  assert.equal(f.run('build()?.status'),'SCHEDULED');
+  assert.equal(f.run('build().questions.length'),4);
+  assert.equal(f.run('build().questions.every(q=>q.sources.every(s=>s.direction===2))'),true);
+  assert.equal(f.run('WeeklyReviewLogic.prepare({tests,results,sets,studentId:1,monday:"2026-11-02"}).reviewStage'),'READY');
+});
+
+test('mixed assignment weeks keep each correct word within its own actual source modes', () => {
+  const f=fixture();f.run(`tests[0].vocabQuestionCounts={2:10,3:0,4:0};tests[1].vocabQuestionCounts={2:0,3:10,4:0};
+    results.push({...results[0],id:'spelling',testId:'source1',direction:3,questionDetails:[detail(4,false),detail(5,true),detail(6,true),detail(7,true)]});`);
+  for(let i=0;i<15;i++) {
+    assert.equal(f.run('build().questions.filter(q=>q.sources.every(s=>s.direction===2)).every(q=>q.mode==="CHOICE")'),true);
+    assert.equal(f.run('build().questions.filter(q=>q.sources.every(s=>s.direction===3)).every(q=>q.mode==="SPELLING")'),true);
+  }
+});
+
+test('definition-only reviews stay spelling-only and integrated sources keep both existing review modes', () => {
+  const f=fixture();f.run('tests.forEach(t=>t.isEnglishDefTest=true);results[0].direction=5');
+  assert.equal(f.run('build().questions.every(q=>q.mode==="SPELLING")'),true);
+  f.run('tests.forEach(t=>{t.isEnglishDefTest=false;t.vocabQuestionCounts={2:0,3:0,4:10}});results[0].direction=4;results[0].passed=true;results[0].gradedByAdmin=true');
+  assert.deepEqual(f.plain('[...new Set(build().questions.map(q=>q.mode))].sort()'),['CHOICE','SPELLING']);
 });
 test('automatic marking follows existing spelling trim/case/Korean keyboard rules', () => {
   const f=fixture(); f.run("const qs=[{id:'s',mode:'SPELLING',word:words[0]},{id:'c',mode:'CHOICE',word:words[1]}]");

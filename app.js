@@ -1288,7 +1288,7 @@ const App = {
           ${test.type === 'VOCAB' ? `
             <div class="text-[11px] text-violet-700 font-bold mt-1.5 pt-1 border-t border-violet-100 flex items-center gap-1">
               <i class="fa-solid fa-list-ol"></i>
-              <span>출제 문항: ${test.vocabQuestionCounts ? (test.isEnglishDefTest ? `${test.vocabQuestionCounts[5] || 40}문항` : `객관식 ${test.vocabQuestionCounts[2] || 40} · 스펠링 ${test.vocabQuestionCounts[3] || 40} · 통합 ${test.vocabQuestionCounts[4] || 40}`) : '각 40문항'}</span>
+              <span>출제 문항: ${this.getVocabQuestionCountSummary(test)}</span>
             </div>
           ` : ''}
         </div>
@@ -3161,7 +3161,7 @@ const App = {
       <td class="py-3.5 px-4 whitespace-nowrap">
         <div class="text-xs text-slate-600">기준: <strong class="text-slate-800">${e(cutoff === '' || cutoff == null ? '-' : cutoff)}</strong></div>
         <div class="text-xs text-slate-600 mt-0.5">점수: <strong class="${score === '' || score == null ? 'text-slate-400' : 'text-indigo-600'}">${e(score === '' || score == null ? '-' : score)}</strong></div>
-        ${test.type === 'VOCAB' && test.vocabQuestionCounts ? `<div class="text-[10px] text-slate-500 mt-0.5">문항: 객 ${e(test.vocabQuestionCounts[2] ?? 40)} · 스 ${e(test.vocabQuestionCounts[3] ?? 40)} · 통 ${e(test.vocabQuestionCounts[4] ?? 40)}</div>` : ''}
+        ${test.type === 'VOCAB' && test.vocabQuestionCounts ? `<div class="text-[10px] text-slate-500 mt-0.5">문항: ${e(this.getVocabQuestionCountSummary(test))}</div>` : ''}
       </td>
       <td class="py-3.5 px-4 whitespace-nowrap">${options.status}</td>
       <td class="py-3.5 px-4 text-center whitespace-nowrap"><div class="admin-exam-actions flex items-center justify-center gap-1.5">${options.actions}</div></td>
@@ -3692,10 +3692,10 @@ const App = {
     if (document.getElementById('formVocabCutoff_4')) document.getElementById('formVocabCutoff_4').value = this.getBaseVocabCutoffScore(test, 4);
     if (document.getElementById('formVocabCutoff_5')) document.getElementById('formVocabCutoff_5').value = this.getBaseVocabCutoffScore(test, 5);
     const testQC = test.vocabQuestionCounts || {};
-    if (document.getElementById('formVocabQuestionCount_2')) document.getElementById('formVocabQuestionCount_2').value = testQC[2] || testQC['2'] || test.vocabQuestionCount_2 || '';
-    if (document.getElementById('formVocabQuestionCount_3')) document.getElementById('formVocabQuestionCount_3').value = testQC[3] || testQC['3'] || test.vocabQuestionCount_3 || '';
-    if (document.getElementById('formVocabQuestionCount_4')) document.getElementById('formVocabQuestionCount_4').value = testQC[4] || testQC['4'] || test.vocabQuestionCount_4 || '';
-    if (document.getElementById('formVocabQuestionCount_5')) document.getElementById('formVocabQuestionCount_5').value = testQC[5] || testQC['5'] || test.vocabQuestionCount_5 || '';
+    if (document.getElementById('formVocabQuestionCount_2')) document.getElementById('formVocabQuestionCount_2').value = testQC[2] ?? test.vocabQuestionCount_2 ?? '';
+    if (document.getElementById('formVocabQuestionCount_3')) document.getElementById('formVocabQuestionCount_3').value = testQC[3] ?? test.vocabQuestionCount_3 ?? '';
+    if (document.getElementById('formVocabQuestionCount_4')) document.getElementById('formVocabQuestionCount_4').value = testQC[4] ?? test.vocabQuestionCount_4 ?? '';
+    if (document.getElementById('formVocabQuestionCount_5')) document.getElementById('formVocabQuestionCount_5').value = testQC[5] ?? test.vocabQuestionCount_5 ?? '';
     if (document.getElementById('formIsEnglishDefTest')) {
       document.getElementById('formIsEnglishDefTest').checked = Boolean(test.isEnglishDefTest);
     }
@@ -4618,11 +4618,12 @@ const App = {
     const rawQC4 = document.getElementById('formVocabQuestionCount_4')?.value;
     const rawQC5 = document.getElementById('formVocabQuestionCount_5')?.value;
     const vocabQuestionCounts = isVocabTest ? {
-      2: (rawQC2 && Number(rawQC2) >= 5) ? Number(rawQC2) : null,
-      3: (rawQC3 && Number(rawQC3) >= 5) ? Number(rawQC3) : null,
-      4: (rawQC4 && Number(rawQC4) >= 5) ? Number(rawQC4) : null,
+      2: rawQC2?.trim() ? Number(rawQC2) : null,
+      3: rawQC3?.trim() ? Number(rawQC3) : null,
+      4: rawQC4?.trim() ? Number(rawQC4) : null,
       5: (rawQC5 && Number(rawQC5) >= 5) ? Number(rawQC5) : null
     } : null;
+    const vocabDirections = isVocabTest ? AppData.getVocabDirections({ isEnglishDefTest, vocabQuestionCounts }) : [];
     const practiceCutoff = Number(document.getElementById('formPracticeCutoff')?.value ?? 80);
 
     const textMemorizeMode = isTextMemorize ? (document.querySelector('input[name="formTextMemorizeMode"]:checked')?.value || 'CLOZE') : null;
@@ -4681,8 +4682,8 @@ const App = {
         cutoff = `영영풀이 ${vocabCutoff5}점`;
         cutoffScore = vocabCutoff5;
       } else {
-        cutoff = `객관식 ${vocabCutoff2}점 · 스펠링 ${vocabCutoff3}점 · 통합 ${vocabCutoff4}점`;
-        cutoffScore = Math.min(vocabCutoff2, vocabCutoff3, vocabCutoff4);
+        cutoff = vocabDirections.map(dir => `${this.getVocabDirectionLabel(dir)} ${vocabCutoffs[dir]}점`).join(' · ');
+        cutoffScore = vocabDirections.length ? Math.min(...vocabDirections.map(dir => vocabCutoffs[dir])) : null;
       }
     } else if (isPracticeTest) {
       cutoff = `${practiceCutoff}점 이상`;
@@ -4722,7 +4723,15 @@ const App = {
           return;
         }
       } else {
-        const allValid = [vocabCutoff2, vocabCutoff3, vocabCutoff4].every(v => Number.isInteger(v) && v >= 1 && v <= 100);
+        const validCounts = [2, 3, 4].every(dir => {
+          const count = vocabQuestionCounts[dir];
+          return count === null || (Number.isInteger(count) && (count === 0 || (count >= 5 && count <= 200)));
+        });
+        if (!validCounts || vocabDirections.length === 0) {
+          this.toast('출제 문항 수는 0(제외) 또는 5~200 사이의 정수로 입력하고, 최소 한 유형은 출제해주세요.', 'error');
+          return;
+        }
+        const allValid = vocabDirections.every(dir => Number.isInteger(vocabCutoffs[dir]) && vocabCutoffs[dir] >= 1 && vocabCutoffs[dir] <= 100);
         if (vocabSetIds.length === 0 || !allValid) {
           this.toast('단어 세트를 최소 1개 이상 선택하고 각 유형별 커트라인을 1~100점 사이로 입력해주세요.', 'error');
           return;
@@ -4838,7 +4847,7 @@ const App = {
             teacherNote,
             vocabSetId,
             vocabSetIds,
-            vocabCutoff: isVocabTest ? (isEnglishDefTest ? vocabCutoff5 : Math.min(vocabCutoff2, vocabCutoff3, vocabCutoff4)) : null,
+            vocabCutoff: isVocabTest ? cutoffScore : null,
             vocabCutoffs: isVocabTest ? vocabCutoffs : null,
             isEnglishDefTest: isVocabTest ? isEnglishDefTest : false,
             practiceCutoff: isPracticeTest ? practiceCutoff : null,
@@ -4891,7 +4900,7 @@ const App = {
               cutoffScore,
               vocabSetId,
               vocabSetIds,
-              vocabCutoff: isVocabTest ? (isEnglishDefTest ? vocabCutoff5 : Math.min(vocabCutoff2, vocabCutoff3, vocabCutoff4)) : null,
+              vocabCutoff: isVocabTest ? cutoffScore : null,
               vocabCutoffs: isVocabTest ? vocabCutoffs : null,
               isEnglishDefTest: isVocabTest ? isEnglishDefTest : false,
               practiceCutoff: isPracticeTest ? practiceCutoff : null,
@@ -4933,7 +4942,7 @@ const App = {
               teacherNote: isRegularTest ? teacherNote : '',
               vocabSetId,
               vocabSetIds,
-              vocabCutoff: isVocabTest ? (isEnglishDefTest ? vocabCutoff5 : Math.min(vocabCutoff2, vocabCutoff3, vocabCutoff4)) : null,
+              vocabCutoff: isVocabTest ? cutoffScore : null,
               vocabCutoffs: isVocabTest ? vocabCutoffs : null,
               isEnglishDefTest: isVocabTest ? isEnglishDefTest : false,
               practiceCutoff: isPracticeTest ? practiceCutoff : null,
@@ -4987,7 +4996,7 @@ const App = {
           teacherNote: isRegularTest ? teacherNote : '',
           vocabSetId,
           vocabSetIds,
-          vocabCutoff: isVocabTest ? (isEnglishDefTest ? vocabCutoff5 : Math.min(vocabCutoff2, vocabCutoff3, vocabCutoff4)) : null,
+          vocabCutoff: isVocabTest ? cutoffScore : null,
           vocabCutoffs: isVocabTest ? vocabCutoffs : null,
           isEnglishDefTest: isVocabTest ? isEnglishDefTest : false,
           practiceCutoff: isPracticeTest ? practiceCutoff : null,
@@ -6218,20 +6227,13 @@ const App = {
 
   isVocabTestUnlocked(studentId, setId, direction, testId = null) {
     const dir = Number(direction);
-    if (dir === 2) return { unlocked: true };
-    if (dir === 3) {
-      const prevResult = AppData.getVocabTestResult(studentId, setId, 2, testId);
-      if (!prevResult?.passed) {
-        return { unlocked: false, requiredLabel: '객관식' };
-      }
-      return { unlocked: true };
-    }
-    if (dir === 4) {
-      const prevResult = AppData.getVocabTestResult(studentId, setId, 3, testId);
-      if (!prevResult?.passed) {
-        return { unlocked: false, requiredLabel: '스펠링' };
-      }
-      return { unlocked: true };
+    const test = testId ? AppData.getTests().find(test => String(test.id) === String(testId)) : null;
+    const directions = AppData.getVocabDirections(test);
+    const index = directions.indexOf(dir);
+    if (index > 0) {
+      const previous = directions[index - 1];
+      const prevResult = AppData.getVocabTestResult(studentId, setId, previous, testId);
+      if (!prevResult?.passed) return { unlocked: false, requiredLabel: this.getVocabDirectionLabel(previous) };
     }
     return { unlocked: true };
   },
@@ -6249,6 +6251,7 @@ const App = {
       }
     }
     const effectiveTestId = scheduledTest ? scheduledTest.id : testId;
+    if (scheduledTest && !AppData.getVocabDirections(scheduledTest).includes(Number(direction))) return '';
     let result = AppData.getVocabTestResult(studentId, set.id, direction, effectiveTestId);
     if (!result && scheduledTest && testId !== scheduledTest.id) {
       result = AppData.getVocabTestResult(studentId, set.id, direction, scheduledTest.id);
@@ -7402,6 +7405,12 @@ const App = {
     return '단어';
   },
 
+  getVocabQuestionCountSummary(test) {
+    return AppData.getVocabDirections(test)
+      .map(dir => `${this.getVocabDirectionLabel(dir)} ${AppData.getVocabQuestionCount(test, dir)}문항`)
+      .join(' · ');
+  },
+
   // ── 학생: 단어 테스트 시작 ──────────────────────────────
   startVocabTest(setId, studentId, direction, testId = null) {
     let set = null;
@@ -7417,6 +7426,11 @@ const App = {
       }
     }
     const effectiveTestId = scheduledTest ? scheduledTest.id : testId;
+
+    if (scheduledTest && !AppData.getVocabDirections(scheduledTest).includes(Number(direction))) {
+      this.toast('출제에서 제외된 유형은 응시할 수 없습니다.', 'error');
+      return;
+    }
 
     if (scheduledTest) {
       const setIds = Array.isArray(scheduledTest.vocabSetIds) && scheduledTest.vocabSetIds.length > 0
@@ -7493,14 +7507,7 @@ const App = {
     }
 
     const startedAt = new Date().toISOString();
-    let targetWordCount = 40;
-    if (scheduledTest) {
-      const qCounts = scheduledTest.vocabQuestionCounts || {};
-      const customQC = qCounts[direction] || qCounts[String(direction)] || scheduledTest[`vocabQuestionCount_${direction}`];
-      if (customQC && Number(customQC) >= 5) {
-        targetWordCount = Number(customQC);
-      }
-    }
+    const targetWordCount = AppData.getVocabQuestionCount(scheduledTest, direction);
     const testWords = this.selectVocabTestWords(eligibleWords, targetWordCount);
 
     const initialTime = direction === 2 ? 7 : (direction === 5 ? 20 : (direction === 3 ? 15 : 20));
@@ -8351,10 +8358,10 @@ const App = {
       return;
     }
 
-    const results = AppData.getVocabTestResults().filter(result => result.testId === testId);
-    const requiredDirections = [2, 3, 4];
-    // 3가지 종목(2: 객관식, 3: 스펠링, 4: 스펠링, 뜻)이 모두 응시 완료되고 모두 통과해야만 전체 PASS!
-    const allPassed = requiredDirections.every(dir => results.some(r => r.direction === dir && r.passed));
+    const requiredDirections = AppData.getVocabDirections(test);
+    const results = AppData.getVocabTestResults().filter(result => result.testId === testId && requiredDirections.includes(Number(result.direction)));
+    // 실제 출제한 유형만 모두 통과하면 전체 PASS.
+    const allPassed = requiredDirections.length > 0 && requiredDirections.every(dir => results.some(r => Number(r.direction) === dir && r.passed));
     const hasWaitingGrading = results.some(r => r.direction === 4 && r.waitingGrading && !r.gradedByAdmin);
     const anyFailed = results.some(r => !r.passed && !r.waitingGrading);
 

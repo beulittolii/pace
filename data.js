@@ -1109,6 +1109,18 @@ const FirebaseStore = {
 // ========================================================
 
 const AppData = {
+  getVocabQuestionCount(test, direction) {
+    const raw = test?.vocabQuestionCounts?.[direction] ?? test?.[`vocabQuestionCount_${direction}`];
+    if (raw === 0 || raw === '0') return 0;
+    const count = Number(raw);
+    return Number.isInteger(count) && count >= 5 ? count : 40;
+  },
+
+  getVocabDirections(test) {
+    if (test?.isEnglishDefTest) return [5];
+    return [2, 3, 4].filter(direction => this.getVocabQuestionCount(test, direction) !== 0);
+  },
+
 
   async withCloudTimeout(operation, label, timeoutMs = 12000) {
     let timeoutId;

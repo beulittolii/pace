@@ -81,6 +81,9 @@ async function loadApp(page) {
     FirebaseStore.vocabSets=[{id:'reviewset',title:'복습 원본',words:[{en:'apple',ko:'사과'},{en:'banana',ko:'바나나'},{en:'orange',ko:'오렌지'},{en:'grape',ko:'포도'},{en:'melon',ko:'멜론'},{en:'peach',ko:'복숭아'}]}];
     FirebaseStore.tests=Array.from({length:5},(_,i)=>({id:'source'+i,type:'VOCAB',studentId:501,date:`2026-11-0${i+2}`,status:'SCHEDULED',vocabSetIds:['reviewset'],title:'평일 단어'}));
     FirebaseStore.vocabTestResults=[{id:'source_result',testId:'source0',studentId:501,direction:2,completedAt:'2026-11-06T01:00:00Z',questionDetails:FirebaseStore.vocabSets[0].words.slice(0,4).map((word,i)=>({word,isCorrect:i>=2}))}];
+    // Keep a real spelling source: choice-only correct words no longer become spelling questions.
+    const spellingDetail=FirebaseStore.vocabTestResults[0].questionDetails.pop();
+    FirebaseStore.vocabTestResults.push({id:'spelling_result',testId:'source0',studentId:501,direction:3,completedAt:'2026-11-06T01:00:00Z',questionDetails:[spellingDetail]});
     for(const [collection,items] of [['tests',FirebaseStore.tests],['vocabSets',FirebaseStore.vocabSets],['vocabTestResults',FirebaseStore.vocabTestResults]]) items.forEach(item=>testDocuments.set(`${collection}/${item.id}`,structuredClone(item)));
     FirebaseStore.reviewSourcesReady={tests:true,vocabSets:true,vocabTestResults:false};
     AppData.queueWeeklyReviews();

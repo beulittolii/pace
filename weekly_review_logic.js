@@ -18,14 +18,14 @@ const WeeklyReviewLogic = {
     const weekdays = Array.from({ length: 5 }, (_, i) => i).filter(i => !excludedWeekdays.includes(i)).map(i => this.dateOffset(monday, i));
     const sources = tests.filter(t => t.type === 'VOCAB' && Number(t.studentId) === Number(studentId) && weekdays.includes(t.date));
     if (!weekdays.every(date => sources.some(t => t.date === date))) return null;
-    if (!sources.every(t => (t.status === 'PASS' || t.retestStatus === 'RETEST_PASS') && !results.some(r => r.testId === t.id && Number(r.direction) === 4 && (!r.passed || !r.gradedByAdmin)))) return null;
+    if (!sources.every(t => (t.status === 'PASS' || t.retestStatus === 'RETEST_PASS') && !results.some(r => r.testId === t.id && AppData.getVocabDirections(t).includes(Number(r.direction)) && Number(r.direction) === 4 && (!r.passed || !r.gradedByAdmin)))) return null;
     return sources;
   },
   weekdayCompletion(tests, results, studentId, monday) {
     return Array.from({ length: 5 }, (_, i) => {
       const date = this.dateOffset(monday, i);
       const daily = tests.filter(t => t.type === 'VOCAB' && Number(t.studentId) === Number(studentId) && t.date === date);
-      return daily.length > 0 && daily.every(t => (t.status === 'PASS' || t.retestStatus === 'RETEST_PASS') && !results.some(r => r.testId === t.id && Number(r.direction) === 4 && (!r.passed || !r.gradedByAdmin)));
+      return daily.length > 0 && daily.every(t => (t.status === 'PASS' || t.retestStatus === 'RETEST_PASS') && !results.some(r => r.testId === t.id && AppData.getVocabDirections(t).includes(Number(r.direction)) && Number(r.direction) === 4 && (!r.passed || !r.gradedByAdmin)));
     });
   },
   prepare({ tests, results, sets, studentId, monday, excludedWeekdays = [] }) {
@@ -79,7 +79,8 @@ const WeeklyReviewLogic = {
       const ids = test.vocabSetIds?.length ? test.vocabSetIds : [test.vocabSetId];
       const words = sets.filter(s => ids.includes(s.id)).flatMap(s => (s.words || []).filter(w => this.norm(w.en) && this.norm(w.ko)).map(w => ({ ...w, setId: s.id })));
       words.forEach(w => allWords.set(this.key(w), w));
-      for (const result of results.filter(r => r.testId === test.id && Number(r.studentId) === Number(studentId))) {
+      const directions = AppData.getVocabDirections(test);
+      for (const result of results.filter(r => r.testId === test.id && Number(r.studentId) === Number(studentId) && directions.includes(Number(r.direction)))) {
         for (const attempt of this.attempts(result)) {
           const details = attempt.questionDetails?.length ? attempt.questionDetails : (attempt.wrongAnswers || []).map(d => ({ ...d, isCorrect: false }));
           const seen = new Set();
@@ -110,6 +111,12 @@ const WeeklyReviewLogic = {
     let missingChoices = false;
     const questions = [...wrong, ...correct].map((c, i) => {
       let mode = c.mistakes ? (c.spelling ? 'SPELLING' : 'CHOICE') : ((i - wrong.length) % 2 ? 'SPELLING' : 'CHOICE');
+      if (!c.mistakes) {
+        const supportsChoice = c.sources.some(s => s.direction === 2 || s.direction === 4);
+        const supportsSpelling = c.sources.some(s => [3, 4, 5].includes(s.direction));
+        if (!supportsChoice) mode = 'SPELLING';
+        else if (!supportsSpelling) mode = 'CHOICE';
+      }
       const alternatives = [...new Set([...allWords.values()].map(w => w.ko).filter(ko => this.norm(ko) !== this.norm(c.word.ko)))];
       if (mode === 'CHOICE' && alternatives.length < 4) missingChoices = true;
       return { id: `w${i + 1}`, word: this.clone(c.word), mode, choices: mode === 'CHOICE' ? this.shuffle([c.word.ko, ...this.shuffle(alternatives).slice(0,4)]) : [], mistakeCount: c.mistakes, sources: c.sources };
