@@ -148,6 +148,8 @@ body:has(#paceReportView:not(.hidden)) #studentSidebar{display:none!important;}
 #detailModalBody button[onclick^="App.startVocabTest("]:active{background:#0c332b;}
 
 /* One geometry for completed, available and locked vocabulary actions. */
+.pace-schedule-stages{grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);}
+@media(max-width:640px){.pace-schedule-stages{grid-auto-flow:row;grid-template-columns:minmax(0,1fr);}}
 .pace-vocab-card{border-radius:12px!important;box-shadow:none!important;}
 .pace-vocab-card> :last-child{min-height:40px;border-radius:8px!important;box-shadow:none!important;font-weight:650;}
 .pace-vocab-card button{border-radius:8px!important;}
@@ -269,7 +271,7 @@ body:has(#paceReportView:not(.hidden)) #studentSidebar{display:none!important;}
 #detailModalBody .pace-vocab-book-badge i{color:#65766b;flex:0 0 auto;}
 #detailModalBody .pace-vocab-book-badge span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 #detailModalBody .pace-schedule-resource>div>div{column-gap:8px;row-gap:8px;}
-#detailModalBody .pace-schedule-stages{grid-template-columns:repeat(3,minmax(0,1fr));gap:0;padding:18px 8px;background:#e7ecdf;border-radius:14px;}
+#detailModalBody .pace-schedule-stages{grid-template-columns:none;gap:0;padding:18px 8px;background:#e7ecdf;border-radius:14px;}
 #detailModalBody .pace-schedule-stages>.pace-vocab-card{display:flex;flex-direction:column;align-items:stretch;justify-content:space-between;padding:0 18px;gap:18px;min-height:156px;border:0;border-right:1px solid #cad4c5;border-radius:0!important;background:transparent!important;}
 #detailModalBody .pace-schedule-stages>.pace-vocab-card:last-child{border-right:0;}
 #detailModalBody .pace-schedule-stages>.pace-vocab-card:before{content:none;}

@@ -1496,7 +1496,7 @@ const App = {
             ${this.renderVocabTestButton(set, test.studentId, 5, '영영풀이 테스트 (주관식)', 'bg-teal-600 hover:bg-teal-700 shadow-teal-200', test.id)}
           </div>
         ` : `
-          <div class="pace-schedule-stages grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div class="pace-schedule-stages grid gap-2.5">
             ${this.renderVocabTestButton(set, test.studentId, 2, '객관식', 'bg-violet-600 hover:bg-violet-700 shadow-violet-200', test.id)}
             ${this.renderVocabTestButton(set, test.studentId, 3, '스펠링', 'bg-blue-600 hover:bg-blue-700 shadow-blue-200', test.id)}
             ${this.renderVocabTestButton(set, test.studentId, 4, '통합', 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200', test.id)}
@@ -6214,7 +6214,7 @@ const App = {
                   </button>
                 </div>
               </div>
-              <div class="pace-schedule-stages grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div class="pace-schedule-stages grid gap-2.5">
                 ${this.renderVocabTestButton(set, studentId, 2, '객관식', 'bg-violet-600 hover:bg-violet-700 shadow-violet-200')}
                 ${this.renderVocabTestButton(set, studentId, 3, '스펠링', 'bg-blue-600 hover:bg-blue-700 shadow-blue-200')}
                 ${this.renderVocabTestButton(set, studentId, 4, '통합', 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200')}
