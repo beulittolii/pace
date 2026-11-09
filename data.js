@@ -2644,8 +2644,8 @@ const AppData = {
       const tests = this.getTests();
       const idx = tests.findIndex(t => t.id === testId && t.studentId === Number(studentId));
       if (idx >= 0) {
-        tests[idx] = { ...tests[idx], status: 'PASS' };
-        await this.saveTests(tests);
+        // 전체 일정을 다시 쓰면 영어 학습 권한 밖의 시험까지 저장하게 된다.
+        await this.saveOrUpdateTest({ ...tests[idx], status: 'PASS' });
       }
     }
 
