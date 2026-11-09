@@ -220,7 +220,8 @@ test('calendar and admin status turn green after retest while historical scores 
   const calendar = run("App.buildCalendarCell(9,'2026-11-09',false,FirebaseStore.tests,'2026-11-11')");
   assert.match(calendar, /bg-emerald-100/);
   assert.match(calendar, /문법 테스트 · 완료/);
-  assert.match(calendar, /fa-circle-check/);
+  assert.match(calendar, /fa-align-left/);
+  assert.doesNotMatch(calendar, /fa-circle-check/);
   const row = run('App.renderGrammarAdminRow(root)');
   assert.match(row, /재시험 통과/);
   assert.match(row, /개념 70점/);

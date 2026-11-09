@@ -937,7 +937,7 @@ const App = {
   renderCalendarLearningTest(test, label, icon, handler) {
     const badgeStyle = this.getTestBadgeStyle(test, false);
     const completedGrammar = test.type === 'GRAMMAR' && badgeStyle.tag === '완료';
-    return `<div onclick="App.${handler}('${test.id}')" class="test-event-pill px-1.5 py-1 rounded-md mb-1 font-semibold flex items-center gap-1 shadow-xs ${badgeStyle.class}" title="${this.escapeHtml(label)}${completedGrammar ? ' · 완료' : ''}"><div class="truncate flex items-center gap-1 min-w-0"><span class="inline-flex w-4 flex-shrink-0 items-center justify-center"><i aria-hidden="true" class="fa-solid fa-fw ${completedGrammar ? 'fa-circle-check' : icon}"></i></span><span class="truncate">${this.escapeHtml(label)}</span></div></div>`;
+    return `<div onclick="App.${handler}('${test.id}')" class="test-event-pill px-1.5 py-1 rounded-md mb-1 font-semibold flex items-center gap-1 shadow-xs ${badgeStyle.class}" title="${this.escapeHtml(label)}${completedGrammar ? ' · 완료' : ''}"><div class="truncate flex items-center gap-1 min-w-0"><span class="inline-flex w-4 flex-shrink-0 items-center justify-center"><i aria-hidden="true" class="fa-solid fa-fw ${icon}"></i></span><span class="truncate">${this.escapeHtml(label)}</span></div></div>`;
   },
 
   // 캘린더 개별 날짜 셀 생성 헬퍼
