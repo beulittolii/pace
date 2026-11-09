@@ -916,7 +916,7 @@ function generateDefaultTests() {
 
 
 // ========================================================
-// 단어 세트 기본 데이터 (워드마스터 2000 전체 50개 Day)
+// 단어 세트 기본 데이터 (워드마스터 2000 / Basic / 하이스트)
 // 브라우저 초기 로딩 즉시 모든 학생에게 100% 가용 보장
 // ========================================================
 
@@ -941,6 +941,17 @@ function getDefaultVocabSets() {
       allSets.push({
         ...set,
         book: (set.book || '워드마스터 고등 Basic').trim(),
+        studentIds: [...allStudentIds]
+      });
+    });
+  }
+
+  // 2-3. 워드마스터 하이스트 전체 50개 Day 세트
+  if (typeof WORDMASTER_HIGHEST_SETS !== 'undefined' && Array.isArray(WORDMASTER_HIGHEST_SETS)) {
+    WORDMASTER_HIGHEST_SETS.forEach(set => {
+      allSets.push({
+        ...set,
+        book: (set.book || '워드마스터 하이스트').trim(),
         studentIds: [...allStudentIds]
       });
     });
@@ -1552,7 +1563,7 @@ const AppData = {
         const currentStudentIds = (FirebaseStore.students || DEFAULT_STUDENTS).map(s => Number(s.id));
         items.forEach(s => {
           s.studentIds = (s.studentIds || []).filter(id => currentStudentIds.includes(Number(id)));
-          if (s.book === '워드마스터 수능 2000' || (s.id && s.id.startsWith('wm2000_')) || s.book === '워드마스터 고등 Basic' || (s.id && s.id.startsWith('wm_basic_')) || (s.id && s.id.startsWith('ybm2_')) || s.book === '백발백중 공통영어 2') {
+          if (s.book === '워드마스터 수능 2000' || (s.id && s.id.startsWith('wm2000_')) || s.book === '워드마스터 고등 Basic' || (s.id && s.id.startsWith('wm_basic_')) || (s.id && s.id.startsWith('wm_highest_')) || (s.id && s.id.startsWith('ybm2_')) || s.book === '백발백중 공통영어 2') {
             if (!Array.isArray(s.studentIds)) s.studentIds = [];
             currentStudentIds.forEach(sid => {
               if (!s.studentIds.includes(sid)) s.studentIds.push(sid);
@@ -1660,7 +1671,7 @@ const AppData = {
       localStorage.removeItem(LEGACY_STORAGE_KEYS.tests);
     }
 
-    // 기본 단어 세트(워드마스터 2000 50개 Day + 워드마스터 고등 Basic 30개 Day) 전체 복원 및 학생 권한 보장
+    // 기본 단어 세트(수능 2000 / 고등 Basic / 하이스트) 전체 복원 및 학생 권한 보장
     try {
       const defSets = getDefaultVocabSets();
       const currentSets = FirebaseStore.vocabSets || [];
@@ -1688,7 +1699,7 @@ const AppData = {
       const allStudentIds = this.getStudents().map(s => Number(s.id));
       setMap.forEach(s => {
         s.studentIds = (s.studentIds || []).filter(id => allStudentIds.includes(Number(id)));
-        if (s.book === '워드마스터 수능 2000' || (s.id && s.id.startsWith('wm2000_')) || s.book === '워드마스터 고등 Basic' || (s.id && s.id.startsWith('wm_basic_')) || (s.id && s.id.startsWith('ybm2_')) || s.book === '백발백중 공통영어 2') {
+        if (s.book === '워드마스터 수능 2000' || (s.id && s.id.startsWith('wm2000_')) || s.book === '워드마스터 고등 Basic' || (s.id && s.id.startsWith('wm_basic_')) || (s.id && s.id.startsWith('wm_highest_')) || (s.id && s.id.startsWith('ybm2_')) || s.book === '백발백중 공통영어 2') {
           if (!Array.isArray(s.studentIds)) s.studentIds = [];
           allStudentIds.forEach(sid => {
             if (!s.studentIds.includes(sid)) s.studentIds.push(sid);
@@ -2207,6 +2218,10 @@ const AppData = {
   getVocabSets() {
     const current = FirebaseStore.vocabSets;
     const defSets = getDefaultVocabSets();
+    const highestStudentIds = this.getStudents().map(s => Number(s.id));
+    defSets.forEach(set => {
+      if (set.id.startsWith('wm_highest_')) set.studentIds = [...highestStudentIds];
+    });
 
     if (!Array.isArray(current) || current.length === 0) {
       FirebaseStore.vocabSets = defSets;
@@ -2218,6 +2233,13 @@ const AppData = {
 
     // 워드마스터 고등 Basic 2022 개정판(Day 1: include...) 최신 정본 데이터 즉시 보정
     current.forEach(s => {
+      if (s.id && s.id.startsWith('wm_highest_') && defMap.has(s.id)) {
+        const assigned = new Set((s.studentIds || []).map(Number));
+        if (highestStudentIds.some(id => !assigned.has(id))) {
+          s.studentIds = [...new Set([...assigned, ...highestStudentIds])];
+          modified = true;
+        }
+      }
       if (s.id && s.id.startsWith('wm_basic_')) {
         const defSet = defMap.get(s.id);
         if (defSet && defSet.words) {
@@ -2231,7 +2253,7 @@ const AppData = {
       }
     });
 
-    // 기본 세트(50개 Day + Basic 30개 Day) 중 하나라도 누락되어 있다면 자동 보강
+    // 기본 세트(수능 2000 / Basic / 하이스트) 중 하나라도 누락되어 있다면 자동 보강
     const currentIds = new Set(current.map(s => s.id));
     defSets.forEach(defSet => {
       if (!currentIds.has(defSet.id)) {

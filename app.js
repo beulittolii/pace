@@ -6481,6 +6481,13 @@ const App = {
             bookName = wmBasicMatches[0]?.book || '워드마스터 고등 Basic';
             title = wmBasicMatches.map(s => s.title).join(' + ');
           }
+        } else if (typeof WORDMASTER_HIGHEST_SETS !== 'undefined' && Array.isArray(WORDMASTER_HIGHEST_SETS) && WORDMASTER_HIGHEST_SETS.some(s => idList.includes(s.id))) {
+          const wmHighestMatches = WORDMASTER_HIGHEST_SETS.filter(s => idList.includes(s.id));
+          wmHighestMatches.forEach(s => {
+            if (Array.isArray(s.words)) words.push(...s.words);
+          });
+          bookName = wmHighestMatches[0]?.book || '워드마스터 하이스트';
+          title = wmHighestMatches.map(s => s.title).join(' + ');
         }
       }
     }
