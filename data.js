@@ -2234,6 +2234,19 @@ const AppData = {
     // 워드마스터 고등 Basic 2022 개정판(Day 1: include...) 최신 정본 데이터 즉시 보정
     current.forEach(s => {
       if (s.id && s.id.startsWith('wm_highest_') && defMap.has(s.id)) {
+        // 기존 캐시/클라우드의 알파벳순을 교재 순서로 보정한다.
+        // 동일한 30개 표제어가 있는 세트만 정렬하여 사용자 추가/삭제/철자 편집은 보존한다.
+        const defaultWords = defMap.get(s.id).words;
+        const wordRank = new Map(defaultWords.map((word, index) => [word.en, index]));
+        if (Array.isArray(s.words) && s.words.length === defaultWords.length &&
+            new Set(s.words.map(word => word.en)).size === defaultWords.length &&
+            s.words.every(word => wordRank.has(word.en))) {
+          const ordered = [...s.words].sort((a, b) => wordRank.get(a.en) - wordRank.get(b.en));
+          if (ordered.some((word, index) => word !== s.words[index])) {
+            s.words = ordered;
+            modified = true;
+          }
+        }
         const assigned = new Set((s.studentIds || []).map(Number));
         if (highestStudentIds.some(id => !assigned.has(id))) {
           s.studentIds = [...new Set([...assigned, ...highestStudentIds])];

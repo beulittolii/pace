@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { createHash } = require('node:crypto');
 
 const read = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 function fixture() {
@@ -51,6 +52,70 @@ test('Highest is available on a fresh load alongside existing books', () => {
   assert.equal(run("AppData.getVocabSets().filter(s=>s.id.startsWith('wm_basic_')).length"), 30);
   assert.equal(run("AppData.getVocabSets().filter(s=>s.id.startsWith('wm_highest_')).every(s=>s.studentIds.includes(10001))"), true);
   assert.equal(run('writes.length'), 0);
+});
+
+test('Highest uses verified textbook order across all 1500 words', () => {
+  const run = fixture();
+  const sets = JSON.parse(run('JSON.stringify(WORDMASTER_HIGHEST_SETS)'));
+  assert.deepEqual(sets[0].words.map(w => w.en), [
+    'inclusive', 'adjacent', 'cumulative', 'spur', 'alleviate', 'dispute',
+    'viable', 'endeavor', 'submerge', 'decline', 'acquisition', 'remark',
+    'obsess', 'friction', 'startle', 'overload', 'hazard', 'spoil',
+    'standstill', 'allocation', 'domain', 'hover', 'curb', 'encompass',
+    'fierce', 'detest', 'urban', 'howl', 'lay claim to', 'be stricken with'
+  ]);
+  // Full Day 01~50 order cross-checked against the public sources in the data header.
+  // Existing spelling variants are retained; only ordering changes.
+  const words = sets.flatMap(set => set.words.map(word => word.en));
+  assert.equal(createHash('sha256').update(words.join('\n')).digest('hex'),
+    '716f48bec2f6a86b76a930c8b1109d4105b7f810e35c683c3e8d892d1fa5286f');
+  const permutations = JSON.parse(run('JSON.stringify(WORDMASTER_HIGHEST_BOOK_ORDER)'));
+  assert.equal(permutations.length, 50);
+  permutations.forEach(order => assert.deepEqual([...order].sort((a, b) => a - b),
+    Array.from({ length: 30 }, (_, index) => index)));
+});
+
+test('Highest migrates all alphabetized cached Days without losing edits or repeated writes', () => {
+  const run = fixture();
+  run(`FirebaseStore.students=[];
+    FirebaseStore.vocabSets=JSON.parse(JSON.stringify(getDefaultVocabSets()));
+    const savedDays=FirebaseStore.vocabSets.filter(s=>s.id.startsWith('wm_highest_'));
+    savedDays.forEach(s=>s.words.sort((a,b)=>a.en.localeCompare(b.en)));
+    const editedWord=savedDays[0].words.find(w=>w.en==='inclusive');
+    editedWord.ko='직접 수정한 뜻'; editedWord.ipa='custom'; editedWord.note='보존';
+    savedDays[0].title='선생님 편집'; savedDays[0].studentIds=[12345];
+    const previousResults=[{id:'saved-result',words:[{en:'acquisition',correct:true}]}];
+    FirebaseStore.vocabTestResults=previousResults;
+    AppData.getVocabSets();`);
+  assert.equal(run(`savedDays.every((s,i)=>s.words.every((w,j)=>
+    w.en===WORDMASTER_HIGHEST_SETS[i].words[j].en))`), true);
+  assert.equal(run('savedDays[0].words[0]===editedWord'), true);
+  assert.equal(run('editedWord.ko'), '직접 수정한 뜻');
+  assert.equal(run('editedWord.ipa'), 'custom');
+  assert.equal(run('editedWord.note'), '보존');
+  assert.equal(run('savedDays[0].title'), '선생님 편집');
+  assert.equal(run('savedDays[0].studentIds[0]'), 12345);
+  assert.equal(run('FirebaseStore.vocabTestResults===previousResults'), true);
+  assert.equal(run('writes.length'), 1);
+  run('AppData.getVocabSets(); AppData.getVocabSets();');
+  assert.equal(run('writes.length'), 1);
+});
+
+test('Highest preserves custom word membership and reapplies order after old cloud snapshots', () => {
+  const run = fixture();
+  run(`FirebaseStore.students=[]; FirebaseStore.vocabSets=JSON.parse(JSON.stringify(getDefaultVocabSets()));
+    const edited=FirebaseStore.vocabSets.find(s=>s.id==='wm_highest_day_01');
+    edited.words[0]={en:'custom-word',ko:'직접 추가'};
+    const editedWords=edited.words;
+    const oldCloud=JSON.parse(JSON.stringify(FirebaseStore.vocabSets));
+    oldCloud.find(s=>s.id==='wm_highest_day_50').words.sort((a,b)=>a.en.localeCompare(b.en));
+    AppData.getVocabSets();`);
+  assert.equal(run('edited.words===editedWords'), true);
+  assert.equal(run('writes.length'), 0);
+  run('FirebaseStore.vocabSets=oldCloud; AppData.getVocabSets();');
+  assert.equal(run("FirebaseStore.vocabSets.find(s=>s.id==='wm_highest_day_50').words[0].en"), 'mechanism');
+  assert.equal(run("FirebaseStore.vocabSets.find(s=>s.id==='wm_highest_day_01').words[0].en"), 'custom-word');
+  assert.equal(run('writes.length'), 1);
 });
 
 test('old caches gain missing Days without replacing custom sets or saved edits', () => {
@@ -104,10 +169,13 @@ test('study modal opens single and multiple Highest Days, including static fallb
     'renderVocabStudyContent','renderVocabStudyFooter','showModal']) App[method]=()=>{};`);
   run("App.openVocabStudyModal('wm_highest_day_01')");
   assert.equal(run('App.state.vocabStudy.words.length'), 30);
+  assert.equal(run('App.state.vocabStudy.words[0].en'), 'inclusive');
   assert.equal(run('App.state.vocabStudy.bookName'), '워드마스터 하이스트');
   run("App.openVocabStudyModal('wm_highest_day_01,wm_highest_day_50')");
   assert.equal(run('App.state.vocabStudy.words.length'), 60);
+  assert.equal(run('App.state.vocabStudy.words[30].en'), 'mechanism');
   run("AppData.getVocabSets=()=>[]; App.openVocabStudyModal('wm_highest_day_50')");
   assert.equal(run('App.state.vocabStudy.words.length'), 30);
   assert.equal(run("App.state.vocabStudy.words.some(w=>w.en==='municipal')"), true);
+  assert.equal(run('App.state.vocabStudy.words[0].en'), 'mechanism');
 });

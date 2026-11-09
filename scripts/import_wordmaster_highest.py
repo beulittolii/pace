@@ -4,6 +4,8 @@
 Requires PyMuPDF (pip install pymupdf). Pass the three 1-Day PDFs followed
 by the three 2-Day PDFs from https://flowedu.tistory.com/506.
 Only vocabulary/meanings are imported, not examples or test layouts.
+The checked-in JS book-order table is retained: randomized tests cannot
+recover textbook order. Never regenerate that table from test numbering.
 """
 import argparse
 import json
@@ -97,8 +99,22 @@ def main():
                 ko = '(특정한 반응을) 유발하다'
             words.append({'en': en, 'ko': ko, 'ipa': ''})
         sets.append({'id': f'wm_highest_day_{day:02}', 'book': '워드마스터 하이스트', 'title': f'Day {day:02}', 'studentIds': [], 'words': words})
-    header = '// 워드마스터 하이스트 (2024년 11월 출간), Day 01~50, 각 30개 어휘\n// 출처: https://flowedu.tistory.com/506 (공개 답지 1~3회독 교차 검증)\n// Day 구분은 교재 기준, Day 내 순서는 알파벳순. 발음기호는 추정하지 않음.\n'
-    args.output.write_text(header + 'const WORDMASTER_HIGHEST_SETS = ' + json.dumps(sets, ensure_ascii=False, indent=2) + ';\n')
+    canonical = Path(__file__).resolve().parent.parent / 'wordmaster_highest_data.js'
+    header = canonical.read_text().split('const WORDMASTER_HIGHEST_SETS = ', 1)[0]
+    match = re.search(r'const WORDMASTER_HIGHEST_BOOK_ORDER = (\[[\s\S]*?\n\]);', header)
+    assert match, 'Missing verified textbook-order table'
+    book_order = json.loads(match[1])
+    assert len(book_order) == 50
+    assert all(sorted(order) == list(range(30)) for order in book_order)
+    suffix = '\n'.join([
+        '].map((set, dayIndex) => ({',
+        '  ...set,',
+        '  words: WORDMASTER_HIGHEST_BOOK_ORDER[dayIndex].map(wordIndex => set.words[wordIndex])',
+        '}));',
+        '',
+    ])
+    payload = json.dumps(sets, ensure_ascii=False, indent=2)
+    args.output.write_text(header + 'const WORDMASTER_HIGHEST_SETS = ' + payload[:-1] + suffix)
     print(f'Created {args.output}: {len(sets)} Days, {sum(len(s["words"]) for s in sets)} entries')
 
 
