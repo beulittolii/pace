@@ -165,3 +165,68 @@ test('deleting a retest restores the previous result and deleting the first test
   assert.equal(f.run('AppData.getTests().length'), 0);
   assert.equal(f.documents.size, 0);
 });
+
+test('passing the failed part on a retest completes the original schedule without rewriting its grade', async () => {
+  const f = fixture();
+  const first = await f.run(`AppData.assignGrammarTest(${assignment})`);
+  f.context.rootId = first.id;
+  await f.run("AppData.updateGrammarTest(rootId, t => { t.grammarResults = { concept: { score: 70, passed: false }, practice: { score: 80, passed: true } }; t.grammarStage = 'done'; })");
+  const retest = await f.run(`AppData.assignGrammarTest({ ...${assignment}, parts: ['concept'] })`);
+  f.context.retestId = retest.id;
+  const state = () => f.run("GrammarLogic.schedulePartState(AppData.getTests().find(t=>t.id===rootId), 'concept', AppData.getTests())");
+  assert.equal(state(), 'FAIL', 'an assigned but unattempted retest is not a pass');
+  await f.run("AppData.updateGrammarTest(retestId, t => { t.grammarResults.concept = { waitingGrading: true }; })");
+  assert.equal(state(), 'FAIL', 'pending manual grading is not a pass');
+  await f.run("AppData.updateGrammarTest(retestId, t => { t.grammarResults.concept = { score: 80, passed: true }; t.grammarStage = 'done'; })");
+  assert.equal(state(), 'PASS');
+  assert.equal(f.run("GrammarLogic.schedulePartState(AppData.getTests().find(t=>t.id===rootId), 'practice', AppData.getTests())"), 'PASS');
+  assert.equal(f.documents.get(`tests/${first.id}`).grammarResults.concept.score, 70);
+  assert.equal(f.documents.get(`tests/${first.id}`).grammarResults.concept.passed, false);
+  assert.equal(f.run("GrammarLogic.partState(AppData.getTests().find(t=>t.id===rootId),'concept')"), 'FAIL');
+  await f.run('AppData.deleteGrammarTest(retestId)');
+  assert.equal(state(), 'FAIL', 'deleting the passing retest restores the original schedule state');
+});
+
+test('both failed areas need their own passing retest, and separate chains never affect the original', () => {
+  const f = fixture();
+  f.run(`const root={id:'root',type:'GRAMMAR',studentId:1,grammarUnitId:'subjunctive',grammarRootId:'root',grammarSequence:0,
+    grammarParts:['concept','practice'],grammarResults:{concept:{passed:false,score:60},practice:{passed:false,score:70}}};
+    const concept={...root,id:'concept-retest',grammarSequence:1,grammarParts:['concept'],grammarResults:{concept:{passed:true,score:80}}};
+    const practice={...root,id:'practice-retest',grammarSequence:2,grammarParts:['practice'],grammarResults:{practice:{passed:true,score:90}}};
+    FirebaseStore.tests=[root,concept];`);
+  const states = () => f.plain("root.grammarParts.map(p=>GrammarLogic.schedulePartState(root,p,AppData.getTests()))");
+  assert.deepEqual(states(), ['PASS', 'FAIL']);
+  f.run('FirebaseStore.tests.push(practice)');
+  assert.deepEqual(states(), ['PASS', 'PASS']);
+  for (const change of ["grammarRootId:'other-root'", 'studentId:2', "grammarUnitId:'other-unit'"]) {
+    f.run(`FirebaseStore.tests=[root,{...concept,${change}},{...practice,${change}}]`);
+    assert.deepEqual(states(), ['FAIL', 'FAIL']);
+  }
+  f.run(`FirebaseStore.tests=[root,concept,practice,{...concept,id:'newer',grammarSequence:3,grammarResults:{concept:{passed:false,score:50}}}]`);
+  assert.deepEqual(states(), ['FAIL', 'PASS'], 'an older pass cannot override the newest failed retest');
+});
+
+test('calendar and admin status turn green after retest while historical scores stay unchanged', () => {
+  const context = vm.createContext({ console, Date, Math, setTimeout, clearTimeout,
+    localStorage: { getItem: () => null, setItem() {} },
+    window: { addEventListener() {} }, document: { addEventListener() {}, getElementById: () => null } });
+  const run = code => vm.runInContext(code, context);
+  for (const file of ['grammar_data.js', 'data.js', 'app.js', 'grammar.js']) run(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'));
+  run(`const root={id:'root',type:'GRAMMAR',title:'문법 테스트',studentId:1,date:'2026-11-09',grammarUnitId:'subjunctive',grammarRootId:'root',grammarSequence:0,
+    grammarParts:['concept','practice'],grammarResults:{concept:{passed:false,score:70},practice:{passed:true,score:90}}};
+    const retest={...root,id:'retest',date:'2026-11-10',grammarSequence:1,grammarParts:['concept'],grammarResults:{concept:{passed:true,score:80}}};
+    FirebaseStore.tests=[root,retest];`);
+  assert.equal(run('App.getTestBadgeStyle(root).tag'), '완료');
+  const calendar = run("App.buildCalendarCell(9,'2026-11-09',false,FirebaseStore.tests,'2026-11-11')");
+  assert.match(calendar, /bg-emerald-100/);
+  assert.match(calendar, /문법 테스트 · 완료/);
+  assert.match(calendar, /fa-circle-check/);
+  const row = run('App.renderGrammarAdminRow(root)');
+  assert.match(row, /재시험 통과/);
+  assert.match(row, /개념 70점/);
+  assert.match(run('App.grammarSummary(root)'), /70점 · 미달/);
+  assert.equal(run('App.getTestBadgeStyle(retest).tag'), '완료');
+  run('retest.grammarResults.concept={waitingGrading:true};');
+  assert.match(run('App.getTestBadgeStyle(root).class'), /bg-rose-100/);
+  assert.doesNotMatch(run("App.buildCalendarCell(9,'2026-11-09',false,FirebaseStore.tests,'2026-11-11')"), /문법 테스트 · 완료/);
+});

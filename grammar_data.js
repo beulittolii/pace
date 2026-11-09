@@ -60,6 +60,18 @@ const GrammarLogic = {
       .sort((a, b) => (a.grammarSequence || 0) - (b.grammarSequence || 0));
     return Object.fromEntries(this.parts.map(part => [part, attempts.filter(t => t.grammarParts.includes(part)).at(-1) || null]));
   },
+  schedulePartState(test, part, tests) {
+    const state = this.partState(test, part);
+    if (state !== 'FAIL') return state;
+    const rootId = test.grammarRootId || test.id;
+    const chain = tests.filter(t => t.type === 'GRAMMAR'
+      && (t.grammarRootId || t.id) === rootId
+      && Number(t.studentId) === Number(test.studentId)
+      && t.grammarUnitId === test.grammarUnitId);
+    const latest = this.latest(chain, test.studentId, test.grammarUnitId)[part];
+    return latest && (latest.grammarSequence || 0) > (test.grammarSequence || 0)
+      && this.partState(latest, part) === 'PASS' ? 'PASS' : state;
+  },
   eligible(tests, studentId, unitId) {
     const latest = this.latest(tests, studentId, unitId);
     return this.parts.filter(part => latest[part] && this.partState(latest[part], part) === 'FAIL');

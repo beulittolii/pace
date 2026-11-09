@@ -21,10 +21,11 @@ Object.assign(App, {
     };
   },
   grammarBadge(test) {
-    const states = test.grammarParts.map(part => GrammarLogic.partState(test, part));
+    const tests = AppData.getTests();
+    const states = test.grammarParts.map(part => GrammarLogic.schedulePartState(test, part, tests));
     const status = states.every(state => state === 'PASS') ? 'PASS' : states.includes('FAIL') ? 'FAIL' : 'SCHEDULED';
     const style = this.getTestBadgeStyle({ ...test, type: 'VOCAB', status }, false);
-    return { ...style, tag: this.grammarSummary(test) };
+    return { ...style, tag: status === 'PASS' ? '완료' : this.grammarSummary(test) };
   },
   grammarButton(label, action, secondary = false) {
     return `<button type="button" onclick="${action}" class="grammar-button ${secondary ? 'grammar-button-secondary' : ''}">${label}</button>`;
@@ -479,8 +480,9 @@ Object.assign(App, {
       cutoff: '각 영역 80점 이상',
       score: test.grammarParts.map(part => `${GrammarLogic.label(part)} ${test.grammarResults?.[part]?.score != null ? test.grammarResults[part].score + '점' : '-'}`).join(' · '),
       status: test.grammarParts.map(part => {
-        const state = GrammarLogic.partState(test, part);
-        return `<div class="flex items-center gap-1.5 mb-1 last:mb-0"><span class="text-xs text-slate-500">${GrammarLogic.label(part)}</span>${this.renderAdminExamBadge(labels[state] || '미응시', tones[state])}</div>`;
+        const state = GrammarLogic.schedulePartState(test, part, AppData.getTests());
+        const label = state === 'PASS' && GrammarLogic.partState(test, part) === 'FAIL' ? '재시험 통과' : labels[state] || '미응시';
+        return `<div class="flex items-center gap-1.5 mb-1 last:mb-0"><span class="text-xs text-slate-500">${GrammarLogic.label(part)}</span>${this.renderAdminExamBadge(label, tones[state])}</div>`;
       }).join(''),
       actions: this.renderAdminExamAction('수정', `App.openGrammarAssignmentModal('${test.id}')`, 'fa-pen-to-square')
         + this.renderAdminExamAction('삭제', `App.deleteGrammarTest('${test.id}')`, 'fa-trash-can', 'rose')
