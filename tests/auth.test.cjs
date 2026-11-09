@@ -52,10 +52,16 @@ function loginFixture(remember = false) {
     rememberLogin:{checked:remember}, loginError:{textContent:'',classList:{add(){},remove(){}}},
     loginPasswordToggle:{attributes:{},setAttribute(key,value){this.attributes[key]=value;},querySelector(){return icon;}}
   };
-  const button = {disabled:false};
+  const attributes = {};
+  const label = {textContent:'로그인'};
+  const loginIcon = {className:'fa-solid fa-right-to-bracket'};
+  const button = {disabled:false, setAttribute(k,v){attributes[k]=v;},querySelector(s){return s==='span' ? label : loginIcon;}};
+  const form = {setAttribute(k,v){attributes[k]=v;},removeAttribute(k){delete attributes[k];}};
+  const visuals = [];
   const window = {document:{}};
   vm.runInNewContext(fs.readFileSync(require.resolve('../auth.js'),'utf8'), {
-    window, document:{getElementById:id=>fields[id],querySelector:()=>button}
+    window, document:{getElementById:id=>fields[id],querySelector:s=>s.endsWith('form')?form:button},
+    App:{showLoadingSkeleton:role=>visuals.push(role || 'login'),finishInitialLoading:()=>visuals.push('hide'),showLanding:async()=>visuals.push('landing')}
   });
   const auth = window.PaceAuth, calls = [];
   auth.ready = async()=>{};
@@ -65,9 +71,91 @@ function loginFixture(remember = false) {
     setPersistence:async(a,p)=>calls.push(['persistence',p]),
     signInWithEmailAndPassword:async(a,email,password)=>{calls.push(['login',email,password]);a.currentUser={uid:'student1'};}
   };
+  const realEnter = auth.enter.bind(auth);
   auth.enter = async()=>calls.push(['enter']);
-  return {auth,fields,icon,button,calls};
+  return {auth,fields,icon,button,calls,label,loginIcon,attributes,visuals,realEnter};
 }
+
+function deferred() {
+  let resolve, reject;
+  const promise = new Promise((yes,no)=>{resolve=yes;reject=no;});
+  return {promise,resolve,reject};
+}
+
+function loadingFixture(role = 'student') {
+  const fixture = loginFixture();
+  const {auth,realEnter,visuals} = fixture;
+  auth.enter = realEnter;
+  auth.clearData = ()=>{auth.admin=false;auth.member=null;};
+  auth.identity = async()=>{auth.admin=role==='admin';auth.member=role==='student'?{studentId:1}:null;};
+  auth.loadData = async()=>{};
+  auth.home = ()=>visuals.push('home');
+  auth.open = step=>visuals.push(`signup-${step}`);
+  auth.close = ()=>{};
+  auth.watchMembership = ()=>{};
+  return fixture;
+}
+
+test('authentication shows button loading before the data skeleton and rejects duplicate submissions', async()=>{
+  const {auth,button,label,loginIcon,attributes,visuals,calls}=loadingFixture();
+  const signing=deferred(), data=deferred();
+  auth.f.signInWithEmailAndPassword=async()=>{calls.push(['login']);await signing.promise;auth.auth.currentUser={uid:'student1'};};
+  auth.loadData=()=>data.promise;
+  const pending=auth.login();
+  await new Promise(setImmediate);
+  assert.equal(button.disabled,true);
+  assert.equal(label.textContent,'로그인 중…');
+  assert.equal(attributes['aria-busy'],'true');
+  assert.match(loginIcon.className,/pace-login-spinner/);
+  assert.deepEqual(visuals,[]);
+  await auth.login();
+  assert.equal(calls.filter(c=>c[0]==='login').length,1);
+  signing.resolve();await new Promise(setImmediate);
+  assert.deepEqual(visuals,['login','student']);
+  data.resolve();await pending;
+  assert.deepEqual(visuals,['login','student','home','hide']);
+  assert.equal(button.disabled,false);
+  assert.equal(label.textContent,'로그인');
+  assert.equal(attributes['aria-busy'],undefined);
+  assert.equal(loginIcon.className,'fa-solid fa-right-to-bracket');
+});
+
+test('failed authentication restores button without showing the skeleton and permits retry', async()=>{
+  const {auth,fields,label,button,visuals}=loadingFixture();
+  const signIn=auth.f.signInWithEmailAndPassword;
+  auth.f.signInWithEmailAndPassword=async()=>{throw {code:'auth/invalid-credential'};};
+  await auth.login();
+  assert.deepEqual(visuals,[]);
+  assert.match(fields.loginError.textContent,/아이디 또는 비밀번호/);
+  assert.equal(button.disabled,false);assert.equal(label.textContent,'로그인');
+  auth.f.signInWithEmailAndPassword=signIn;
+  await auth.login();
+  assert.deepEqual(visuals,['login','student','home','hide']);
+});
+
+test('data failure closes the skeleton, restores landing and allows a successful retry', async()=>{
+  const {auth,fields,button,visuals}=loadingFixture();
+  auth.loadData=async()=>{throw Error('데이터 연결 실패');};
+  await auth.login();
+  assert.deepEqual(visuals,['login','student','hide','landing']);
+  assert.equal(fields.loginError.textContent,'데이터 연결 실패');
+  assert.equal(auth.member,null);assert.equal(button.disabled,false);
+  auth.loadData=async()=>{};
+  await auth.login();
+  assert.deepEqual(visuals.slice(4),['login','student','home','hide']);
+});
+
+test('admin, automatic sign-in and incomplete membership leave no skeleton over the destination', async()=>{
+  const admin=loadingFixture('admin');
+  await admin.auth.enter();
+  assert.deepEqual(admin.visuals,['login','admin','home','hide']);
+  const incomplete=loadingFixture('none');
+  await incomplete.auth.login();
+  assert.deepEqual(incomplete.visuals,['login','signup-2','hide']);
+  const signup=loadingFixture();
+  await signup.auth.enter(false);
+  assert.deepEqual(signup.visuals,[]);
+});
 
 test('unchecked auto-login uses memory only; checked auto-login uses persistent local storage', async()=>{
   for (const remember of [false,true]) {

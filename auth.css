@@ -2,6 +2,11 @@
 
 .signup-error.signup-loading{color:#397a62}
 
+.pace-login-spinner{display:inline-block;width:16px;height:16px;flex-shrink:0;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:pace-login-spin .75s linear infinite}
+#landingView form button[type=submit]:disabled{cursor:wait;opacity:.8}
+@keyframes pace-login-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.pace-login-spinner{animation:none}}
+
 .pace-login-password{position:relative}.pace-login-password input{padding-right:48px}.pace-password-toggle{position:absolute;right:2px;top:2px;bottom:2px;width:44px;display:flex;align-items:center;justify-content:center;border:0;border-radius:6px;background:transparent;color:#6b7f79;cursor:pointer}.pace-password-toggle:hover{color:#174e42}.pace-password-toggle:focus-visible{outline:2px solid #397a62;outline-offset:1px}
 
 .pace-password-dialog{width:calc(100% - 32px);max-width:440px;max-height:calc(100dvh - 32px);margin:auto;padding:28px;border:1px solid #dce5df;border-radius:22px;background:#fff;color:#233d32;overflow:auto;font-family:var(--font-family)}

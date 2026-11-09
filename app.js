@@ -34,13 +34,25 @@ const App = {
     }
   },
 
-  // 최초 클라우드 데이터가 준비될 때까지 보이는 전체 화면 스켈레톤을 닫습니다.
+  // 최초 진입과 로그인 데이터 준비에 같은 스켈레톤을 재사용합니다.
+  showLoadingSkeleton(role = 'login') {
+    const skeleton = document.getElementById('initialLoadingSkeleton');
+    if (!skeleton) return;
+    clearTimeout(this.loadingSkeletonTimer);
+    skeleton.classList.remove('initial-loading-skeleton--leaving', 'initial-loading-skeleton--student', 'initial-loading-skeleton--admin');
+    if (role === 'student' || role === 'admin') skeleton.classList.add(`initial-loading-skeleton--${role}`);
+    skeleton.hidden = false;
+    skeleton.tabIndex = -1;
+    skeleton.focus({ preventScroll: true });
+  },
+
   finishInitialLoading() {
     const skeleton = document.getElementById('initialLoadingSkeleton');
     if (!skeleton) return;
 
+    clearTimeout(this.loadingSkeletonTimer);
     skeleton.classList.add('initial-loading-skeleton--leaving');
-    setTimeout(() => skeleton.remove(), 220);
+    this.loadingSkeletonTimer = setTimeout(() => { skeleton.hidden = true; }, 220);
   },
 
   // 클라우드 동기화 상태 및 데이터 로딩 안내 배너 표시

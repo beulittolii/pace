@@ -84,31 +84,48 @@
     toggleLoginPassword() {
       this.setLoginPasswordVisible(document.getElementById('studentLoginPassword').type === 'password');
     },
+    setLoginLoading(loading) {
+      const form = document.querySelector('#landingView form');
+      const button = document.querySelector('#landingView form button[type=submit]');
+      button.disabled = loading;
+      button.querySelector('span').textContent = loading ? '로그인 중…' : '로그인';
+      button.querySelector('i').className = loading ? 'pace-login-spinner' : 'fa-solid fa-right-to-bracket';
+      if (loading) form.setAttribute('aria-busy', 'true');
+      else form.removeAttribute('aria-busy');
+    },
     async login(event) {
       event?.preventDefault();
       if (this.busy) return;
       const error = document.getElementById('loginError');
-      const button = document.querySelector('#landingView form button[type=submit]');
-      this.busy = true; button.disabled = true; error.classList.add('hidden');
+      this.busy = true; this.setLoginLoading(true); error.classList.add('hidden');
+      let authenticated = false;
       try {
         await this.ready();
         await this.f.setPersistence(this.auth, document.getElementById('rememberLogin').checked ? this.f.browserLocalPersistence : this.f.inMemoryPersistence);
         this.managed = true;
         await this.f.signInWithEmailAndPassword(this.auth, this.email(document.getElementById('studentLoginId').value), document.getElementById('studentLoginPassword').value);
+        authenticated = true;
         document.getElementById('studentLoginPassword').value = '';
         this.setLoginPasswordVisible(false);
         this.observedUid = this.auth.currentUser.uid;
         await this.enter();
-      } catch (e) { error.textContent = this.error(e); error.classList.remove('hidden'); }
-      finally { this.managed = false; this.busy = false; button.disabled = false; }
+      } catch (e) {
+        if (authenticated) { this.clearData(); this.close(); await App.showLanding(); }
+        error.textContent = this.error(e); error.classList.remove('hidden');
+      }
+      finally { this.managed = false; this.busy = false; this.setLoginLoading(false); }
     },
     async enter(showHome = true) {
-      this.clearData();
-      await this.identity(this.auth.currentUser);
-      if (!this.admin && !this.member) { this.open(2); return; }
-      await this.loadData();
-      if (showHome) this.home();
-      this.watchMembership();
+      if (showHome) App.showLoadingSkeleton();
+      try {
+        this.clearData();
+        await this.identity(this.auth.currentUser);
+        if (!this.admin && !this.member) { this.open(2); return; }
+        if (showHome) App.showLoadingSkeleton(this.admin ? 'admin' : 'student');
+        await this.loadData();
+        if (showHome) this.home();
+        this.watchMembership();
+      } finally { if (showHome) App.finishInitialLoading(); }
     },
     home() {
       this.close();

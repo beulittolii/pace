@@ -22,7 +22,7 @@ body {
 
 /* Initial cloud-sync skeleton: same PACE layout, before any app scripts run. */
 .initial-loading-skeleton { position:fixed; inset:0; z-index:100; overflow:auto; background:#f5f5ef; transition:opacity .2s ease,visibility .2s ease; }
-body:has(#initialLoadingSkeleton:not(.initial-loading-skeleton--leaving)) > :is(header, main, footer, aside) { visibility:hidden; }
+body:has(#initialLoadingSkeleton:not([hidden]):not(.initial-loading-skeleton--leaving)) > :is(header, main, footer, aside) { visibility:hidden; }
 .initial-loading-skeleton--leaving { opacity:0; visibility:hidden; pointer-events:none; }
 .initial-loading-skeleton *, .initial-loading-skeleton *::before { box-sizing:border-box; }
 .initial-loading-skeleton__header { height:64px; padding:0 max(1rem,calc((100% - 1250px)/2)); display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #dce1d8; }
