@@ -141,25 +141,77 @@
         if (snap.data().studentId !== this.member?.studentId) this.enter().catch(e => App.toast(this.error(e), 'error'));
       }));
     },
-    openPasswordSettings() {
-      if (!this.auth?.currentUser) { App.toast('로그인 후 비밀번호를 변경해주세요.', 'error'); return; }
+    openProfileSettings(tab = 'goal') {
+      if (!this.auth?.currentUser) { App.toast('로그인 후 프로필을 설정해주세요.', 'error'); return; }
       const dialog = document.getElementById('passwordSettingsDialog');
       if (dialog.open) return;
       this.passwordSettingsOpener = document.activeElement;
       document.getElementById('passwordSettingsForm').reset();
       document.getElementById('passwordSettingsMessage').textContent = '';
+      document.getElementById('goalSettingsMessage').textContent = '';
+      document.getElementById('learningGoal').value = AppData.getStudentById(this.member?.studentId)?.target || '';
+      this.switchProfileTab(tab, false);
       dialog.showModal();
-      document.getElementById('currentPassword').focus();
+      document.getElementById(tab === 'goal' ? 'learningGoal' : 'currentPassword').focus();
+    },
+    openPasswordSettings() { this.openProfileSettings('password'); },
+    switchProfileTab(tab, focus = true) {
+      if (this.passwordBusy || this.goalBusy) return;
+      for (const name of ['goal', 'password']) {
+        const active = name === tab, button = document.getElementById(`${name}SettingsTab`);
+        button.setAttribute('aria-selected', String(active));
+        button.tabIndex = active ? 0 : -1;
+        document.getElementById(`${name}SettingsForm`).hidden = !active;
+      }
+      if (tab !== 'password') document.getElementById('passwordSettingsForm').reset();
+      if (focus) document.getElementById(`${tab}SettingsTab`).focus();
+    },
+    profileTabKeydown(event, tab) {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      this.switchProfileTab(event.key === 'Home' ? 'goal' : event.key === 'End' ? 'password' : tab === 'goal' ? 'password' : 'goal');
+    },
+    async saveGoal(event) {
+      event?.preventDefault();
+      if (this.goalBusy || this.passwordBusy) return;
+      const form = document.getElementById('goalSettingsForm');
+      const message = document.getElementById('goalSettingsMessage');
+      const target = document.getElementById('learningGoal').value.trim();
+      message.textContent = '';
+      if (target.length > 200) { message.textContent = '목표는 200자 이내로 입력해주세요.'; return; }
+      this.goalBusy = true;
+      form.setAttribute('aria-busy', 'true');
+      form.querySelectorAll('textarea, button').forEach(el => el.disabled = true);
+      let saved = false;
+      try {
+        await this.ready();
+        const user = this.auth.currentUser, id = this.member?.studentId, generation = this.generation;
+        const student = AppData.getStudentById(id);
+        if (!user || !student || student.accountUid !== user.uid || student.linking) throw Error('계정과 학생 프로필 연결을 확인해주세요.');
+        await this.raw.updateDoc(this.ref('students', id), { target });
+        if (this.generation !== generation || this.auth.currentUser?.uid !== user.uid || this.member?.studentId !== id) throw Error('로그인 상태가 변경되었어요.');
+        const current = FirebaseStore.students.find(item => item.id === id);
+        if (current) current.target = target;
+        AppData.refreshCloudScreens();
+        saved = true;
+      } catch (error) {
+        message.textContent = this.error(error);
+      } finally {
+        this.goalBusy = false;
+        form.removeAttribute('aria-busy');
+        form.querySelectorAll('textarea, button').forEach(el => el.disabled = false);
+      }
+      if (saved) { this.closePasswordSettings(); App.toast(target ? '학습 목표가 저장되었어요.' : '학습 목표를 지웠어요.', 'success'); }
     },
     closePasswordSettings() {
-      if (this.passwordBusy) return;
+      if (this.passwordBusy || this.goalBusy) return;
       document.getElementById('passwordSettingsDialog').close();
       document.getElementById('passwordSettingsForm').reset();
       this.passwordSettingsOpener?.focus();
     },
     async changePassword(event) {
       event?.preventDefault();
-      if (this.passwordBusy) return;
+      if (this.passwordBusy || this.goalBusy) return;
       const form = document.getElementById('passwordSettingsForm');
       const message = document.getElementById('passwordSettingsMessage');
       const currentPassword = document.getElementById('currentPassword').value;

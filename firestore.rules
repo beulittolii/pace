@@ -105,7 +105,10 @@ service cloud.firestore {
         && request.resource.data.newAccount == true && request.resource.data.target == '' && request.resource.data.accessMode == 'FULL'
         && request.resource.data.name == accountAfter().name && accountAfter().studentId == request.resource.data.id
         && validRedemption(accountAfter().inviteCode));
-      allow update, delete: if admin();
+      allow update: if admin() || (linkedWritable(resource.data.id)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['target'])
+        && request.resource.data.target is string && request.resource.data.target.size() <= 200);
+      allow delete: if admin();
     }
     match /vocabSets/{id} {
       // Shared dictionaries contain learning content, not private student records.

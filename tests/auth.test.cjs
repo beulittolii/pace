@@ -82,6 +82,123 @@ function deferred() {
   return {promise,resolve,reject};
 }
 
+function profileFixture() {
+  const vm = require('node:vm'), fs = require('node:fs');
+  const calls = [], controls = [{disabled:false},{disabled:false}];
+  const fields = {
+    learningGoal:{value:'매일 단어 30개',focus(){calls.push(['focus','goal']);}},
+    currentPassword:{focus(){calls.push(['focus','password']);}},
+    goalSettingsMessage:{textContent:''},passwordSettingsMessage:{textContent:''},
+    passwordSettingsDialog:{open:false,showModal(){this.open=true;},close(){this.open=false;}},
+  };
+  for (const name of ['goal','password']) {
+    fields[`${name}SettingsTab`] = {setAttribute(key,value){this[key]=value;},focus(){calls.push(['tab',name]);}};
+    fields[`${name}SettingsForm`] = {hidden:false,setAttribute(){},removeAttribute(){},querySelectorAll(){return controls;},reset(){calls.push(['reset',name]);}};
+  }
+  const student = {id:1,target:'기존 목표',accountUid:'student1'};
+  const store = {students:[student]};
+  const app = {toast:(...args)=>calls.push(['toast',...args])};
+  const data = {getStudentById:id=>store.students.find(s=>s.id===id),refreshCloudScreens:()=>calls.push(['refresh'])};
+  const window = {document:{}};
+  vm.runInNewContext(fs.readFileSync(require.resolve('../auth.js'),'utf8'), {
+    window,document:{getElementById:id=>fields[id],activeElement:{focus(){calls.push(['opener']);}}},
+    App:app,AppData:data,FirebaseStore:store
+  });
+  const auth = window.PaceAuth;
+  auth.ready = async()=>{};
+  auth.auth = {currentUser:{uid:'student1'}};
+  auth.member = {studentId:1};
+  auth.ref = (collection,id)=>`${collection}/${id}`;
+  auth.raw = {updateDoc:async(ref,patch)=>calls.push(['write',ref,{...patch}])};
+  return {auth,fields,calls,controls,student,app,data};
+}
+
+test('profile opens on goals, supports keyboard tabs, and preserves goals but clears hidden passwords',()=>{
+  const {auth,fields,calls}=profileFixture();
+  auth.openProfileSettings();
+  assert.equal(fields.learningGoal.value,'기존 목표');
+  assert.equal(fields.goalSettingsForm.hidden,false);
+  assert.equal(fields.passwordSettingsForm.hidden,true);
+  assert.equal(fields.goalSettingsTab['aria-selected'],'true');
+  assert.equal(fields.passwordSettingsTab.tabIndex,-1);
+  assert.deepEqual(calls.at(-1),['focus','goal']);
+  fields.learningGoal.value='작성 중';
+  auth.profileTabKeydown({key:'ArrowRight',preventDefault(){}},'goal');
+  assert.equal(fields.passwordSettingsForm.hidden,false);
+  assert.equal(fields.learningGoal.value,'작성 중');
+  auth.profileTabKeydown({key:'Home',preventDefault(){}},'password');
+  assert.equal(fields.passwordSettingsForm.hidden,true);
+  assert.deepEqual(calls.at(-2),['reset','password']);
+  auth.closePasswordSettings();
+  auth.openPasswordSettings();
+  assert.equal(fields.passwordSettingsForm.hidden,false);
+  assert.deepEqual(calls.at(-1),['focus','password']);
+});
+
+test('goal saves only a trimmed target, refreshes the home and supports clearing',async()=>{
+  for(const value of ['  매일 단어 30개  ','   ']) {
+    const {auth,fields,calls,student,controls}=profileFixture();
+    fields.learningGoal.value=value;
+    await auth.saveGoal();
+    assert.deepEqual(calls[0],['write','students/1',{target:value.trim()}]);
+    assert.equal(student.target,value.trim());
+    assert.ok(calls.some(c=>c[0]==='refresh'));
+    assert.equal(fields.passwordSettingsDialog.open,false);
+    assert.ok(controls.every(c=>!c.disabled));
+  }
+});
+
+test('invalid, unlinked or failed goal writes preserve the existing profile and show an error',async()=>{
+  for(const reason of ['long','missing','owner','linking','network']) {
+    const {auth,fields,calls,student}=profileFixture();
+    fields.passwordSettingsDialog.open=true;
+    if(reason==='long') fields.learningGoal.value='a'.repeat(201);
+    if(reason==='missing') auth.member=null;
+    if(reason==='owner') student.accountUid='other';
+    if(reason==='linking') student.linking=true;
+    if(reason==='network') auth.raw.updateDoc=async()=>{throw {code:'auth/network-request-failed'};};
+    await auth.saveGoal();
+    assert.equal(student.target,'기존 목표');
+    assert.ok(fields.goalSettingsMessage.textContent);
+    assert.equal(fields.passwordSettingsDialog.open,true);
+    assert.ok(!calls.some(c=>c[0]==='refresh'||c[0]==='write'));
+  }
+});
+
+test('pending goal writes block duplicate saves, tab changes and closing; changed sessions cannot update the cache',async()=>{
+  const {auth,fields,student,calls}=profileFixture(), pending=deferred();
+  auth.openProfileSettings();
+  auth.raw.updateDoc=async()=>{calls.push(['write']);await pending.promise;};
+  const saving=auth.saveGoal();
+  await new Promise(setImmediate);
+  await auth.saveGoal();
+  auth.switchProfileTab('password');auth.closePasswordSettings();
+  assert.equal(fields.passwordSettingsDialog.open,true);
+  assert.equal(fields.passwordSettingsForm.hidden,true);
+  assert.equal(calls.filter(c=>c[0]==='write').length,1);
+  auth.auth.currentUser={uid:'other'};
+  pending.resolve();await saving;
+  assert.equal(student.target,'기존 목표');
+  assert.match(fields.goalSettingsMessage.textContent,/로그인 상태/);
+});
+
+test('home renders escaped learning goals separately from university goals and hides cleared goals',()=>{
+  const vm=require('node:vm'),fs=require('node:fs');
+  const {app,student,data}=profileFixture(),banner={innerHTML:''};
+  Object.assign(app,{state:{isStudentLoggedIn:true,selectedStudentId:1},escapeHtml:value=>value.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'),getTodayDateString:()=> '2026-11-10',grammarStatistics:()=>({total:0,passed:0})});
+  data.getTestsByStudentId=()=>[];
+  student.name='학생';student.target='<img src=x>\n매일 공부';
+  vm.runInNewContext(fs.readFileSync(require.resolve('../pace.js'),'utf8'),{App:app,AppData:data,document:{getElementById:()=>banner},WeeklyReviewLogic:{monday:()=> '2026-11-09'},AcademicManager:{getTargetUnivs:()=>({1:[{rank:1,name:'목표 대학',major:'학과'}]})}});
+  app.renderPaceHome();
+  assert.match(banner.innerHTML,/나의 목표/);
+  assert.match(banner.innerHTML,/&lt;img src=x&gt;\n매일 공부/);
+  assert.match(banner.innerHTML,/목표 대학 · 학과/);
+  assert.doesNotMatch(banner.innerHTML,/<img/);
+  student.target='';app.renderPaceHome();
+  assert.doesNotMatch(banner.innerHTML,/나의 목표/);
+  assert.match(banner.innerHTML,/학습 목표 설정/);
+});
+
 function loadingFixture(role = 'student') {
   const fixture = loginFixture();
   const {auth,realEnter,visuals} = fixture;

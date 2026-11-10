@@ -3619,15 +3619,27 @@
     </div>
   </div>
 
-  <dialog id="passwordSettingsDialog" class="pace-password-dialog" aria-labelledby="passwordSettingsTitle" oncancel="if(PaceAuth.passwordBusy) event.preventDefault()" onclose="document.getElementById('passwordSettingsForm').reset()">
-    <form id="passwordSettingsForm" onsubmit="PaceAuth.changePassword(event)" novalidate>
-      <div class="pace-password-heading"><div><span class="pace-kicker">PROFILE SETTINGS</span><h2 id="passwordSettingsTitle">비밀번호 변경</h2></div><button type="button" onclick="PaceAuth.closePasswordSettings()" aria-label="닫기">✕</button></div>
+  <dialog id="passwordSettingsDialog" class="pace-password-dialog" aria-labelledby="passwordSettingsTitle" oncancel="if(PaceAuth.passwordBusy || PaceAuth.goalBusy) event.preventDefault()" onclose="document.getElementById('passwordSettingsForm').reset(); document.getElementById('goalSettingsForm').reset()">
+    <div class="pace-password-heading"><div><span class="pace-kicker">PROFILE SETTINGS</span><h2 id="passwordSettingsTitle">프로필 설정</h2></div><button type="button" onclick="PaceAuth.closePasswordSettings()" aria-label="닫기">✕</button></div>
+    <div class="pace-profile-tabs" role="tablist" aria-label="프로필 설정 메뉴">
+      <button id="goalSettingsTab" type="button" role="tab" aria-controls="goalSettingsForm" aria-selected="true" onclick="PaceAuth.switchProfileTab('goal')" onkeydown="PaceAuth.profileTabKeydown(event, 'goal')">목표 설정</button>
+      <button id="passwordSettingsTab" type="button" role="tab" aria-controls="passwordSettingsForm" aria-selected="false" tabindex="-1" onclick="PaceAuth.switchProfileTab('password')" onkeydown="PaceAuth.profileTabKeydown(event, 'password')">비밀번호 재설정</button>
+    </div>
+    <form id="goalSettingsForm" role="tabpanel" aria-labelledby="goalSettingsTab" onsubmit="PaceAuth.saveGoal(event)">
+      <p class="signup-description">이루고 싶은 학습 목표를 적어보세요. 저장한 목표는 홈 화면에 표시돼요.</p>
+      <label for="learningGoal">나의 학습 목표</label>
+      <textarea id="learningGoal" name="target" rows="3" maxlength="200" placeholder="예: 매일 단어 30개 외우기" aria-describedby="goalSettingsHint"></textarea>
+      <p id="goalSettingsHint" class="pace-profile-hint">최대 200자 · 비워서 저장하면 목표를 지울 수 있어요.</p>
+      <p id="goalSettingsMessage" class="signup-error" role="status" aria-live="polite"></p>
+      <button class="signup-primary" type="submit">목표 저장하기 <span aria-hidden="true">→</span></button>
+    </form>
+    <form id="passwordSettingsForm" role="tabpanel" aria-labelledby="passwordSettingsTab" onsubmit="PaceAuth.changePassword(event)" novalidate hidden>
       <p class="signup-description">현재 비밀번호를 확인한 뒤 새 비밀번호로 변경해요.</p>
       <label for="currentPassword">현재 비밀번호</label><input id="currentPassword" name="currentPassword" type="password" autocomplete="current-password" required>
       <label for="newPassword">새 비밀번호</label><input id="newPassword" name="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="64" placeholder="8~64자로 입력해주세요" required>
       <label for="confirmNewPassword">새 비밀번호 확인</label><input id="confirmNewPassword" name="confirmation" type="password" autocomplete="new-password" maxlength="64" placeholder="새 비밀번호를 한 번 더 입력해주세요" required>
       <p id="passwordSettingsMessage" class="signup-error" role="status" aria-live="polite"></p>
-      <button class="signup-primary" type="submit">비밀번호 변경하기 <span aria-hidden="true">→</span></button>
+      <button class="signup-primary" type="submit">비밀번호 재설정하기 <span aria-hidden="true">→</span></button>
     </form>
   </dialog>
 
