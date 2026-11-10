@@ -144,20 +144,23 @@
     openProfileSettings(tab = 'goal') {
       if (!this.auth?.currentUser) { App.toast('로그인 후 프로필을 설정해주세요.', 'error'); return; }
       const dialog = document.getElementById('passwordSettingsDialog');
-      if (dialog.open) return;
+      if (dialog.open) { this.switchProfileTab(tab); return; }
       this.passwordSettingsOpener = document.activeElement;
       document.getElementById('passwordSettingsForm').reset();
       document.getElementById('passwordSettingsMessage').textContent = '';
       document.getElementById('goalSettingsMessage').textContent = '';
       document.getElementById('learningGoal').value = AppData.getStudentById(this.member?.studentId)?.target || '';
+      AcademicManager.prepareTargetUnivEditor(this.member?.studentId);
       this.switchProfileTab(tab, false);
       dialog.showModal();
-      document.getElementById(tab === 'goal' ? 'learningGoal' : 'currentPassword').focus();
+      document.getElementById(tab === 'goal' ? 'learningGoal' : tab === 'university' ? 'universitySettingsTab' : 'currentPassword').focus();
     },
     openPasswordSettings() { this.openProfileSettings('password'); },
     switchProfileTab(tab, focus = true) {
-      if (this.passwordBusy || this.goalBusy) return;
-      for (const name of ['goal', 'password']) {
+      if (this.passwordBusy || this.goalBusy || this.universityBusy) return;
+      if (!['goal', 'university', 'password'].includes(tab)) return;
+      document.getElementById('passwordSettingsDialog').classList.toggle('pace-profile-university', tab === 'university');
+      for (const name of ['goal', 'university', 'password']) {
         const active = name === tab, button = document.getElementById(`${name}SettingsTab`);
         button.setAttribute('aria-selected', String(active));
         button.tabIndex = active ? 0 : -1;
@@ -169,11 +172,13 @@
     profileTabKeydown(event, tab) {
       if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault();
-      this.switchProfileTab(event.key === 'Home' ? 'goal' : event.key === 'End' ? 'password' : tab === 'goal' ? 'password' : 'goal');
+      const tabs = ['goal', 'university', 'password'];
+      const next = (tabs.indexOf(tab) + (event.key === 'ArrowLeft' ? -1 : 1) + tabs.length) % tabs.length;
+      this.switchProfileTab(event.key === 'Home' ? 'goal' : event.key === 'End' ? 'password' : tabs[next]);
     },
     async saveGoal(event) {
       event?.preventDefault();
-      if (this.goalBusy || this.passwordBusy) return;
+      if (this.goalBusy || this.passwordBusy || this.universityBusy) return;
       const form = document.getElementById('goalSettingsForm');
       const message = document.getElementById('goalSettingsMessage');
       const target = document.getElementById('learningGoal').value.trim();
@@ -204,14 +209,14 @@
       if (saved) { this.closePasswordSettings(); App.toast(target ? '학습 목표가 저장되었어요.' : '학습 목표를 지웠어요.', 'success'); }
     },
     closePasswordSettings() {
-      if (this.passwordBusy || this.goalBusy) return;
+      if (this.passwordBusy || this.goalBusy || this.universityBusy) return;
       document.getElementById('passwordSettingsDialog').close();
       document.getElementById('passwordSettingsForm').reset();
       this.passwordSettingsOpener?.focus();
     },
     async changePassword(event) {
       event?.preventDefault();
-      if (this.passwordBusy || this.goalBusy) return;
+      if (this.passwordBusy || this.goalBusy || this.universityBusy) return;
       const form = document.getElementById('passwordSettingsForm');
       const message = document.getElementById('passwordSettingsMessage');
       const currentPassword = document.getElementById('currentPassword').value;

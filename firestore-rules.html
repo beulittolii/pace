@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PACE · Firestore 규칙 복사</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 32px 16px; background: #f3f6f1; color: #233d32; font-family: system-ui, sans-serif; }
+    main { max-width: 960px; margin: auto; padding: clamp(20px, 4vw, 40px); border: 1px solid #dce5df; border-radius: 24px; background: white; }
+    .kicker { color: #617267; font-size: 12px; letter-spacing: 2px; }
+    h1 { font-size: clamp(24px, 4vw, 36px); letter-spacing: -1px; }
+    p, li { font-size: 14px; line-height: 1.8; }
+    ol { padding-left: 24px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+    button, a { display: inline-block; padding: 12px 18px; border: 1px solid #dce5df; border-radius: 10px; font: inherit; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; }
+    button { background: #174e42; color: white; }
+    a { background: #f3f6f1; color: #174e42; }
+    :focus-visible { outline: 3px solid #397a62; outline-offset: 3px; }
+    #status { min-height: 26px; color: #326647; }
+    label { display: block; margin: 20px 0 10px; font-size: 13px; font-weight: 700; }
+    textarea { display: block; width: 100%; height: 480px; padding: 18px; border: 1px solid #dce5df; border-radius: 12px; background: #f8faf7; color: #233d32; font: 12px/1.7 ui-monospace, monospace; resize: vertical; white-space: pre; }
+    .note { color: #617267; font-size: 12px; }
+    code { overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="kicker">PACE / FIRESTORE RULES</p>
+    <h1>규칙 복사하고, 콘솔에서 게시하세요.</h1>
+    <p>프로젝트: <strong>english-mastery-d4427</strong><br>본인 학습 목표 수정 권한이 포함된 전체 보안 규칙입니다.</p>
+    <ol>
+      <li><strong>전체 규칙 복사</strong> 버튼을 누르세요.</li>
+      <li>Firebase 콘솔에서 <strong>Firestore Database → 규칙(Rules)</strong> 탭을 여세요.</li>
+      <li>현재 규칙을 별도로 백업한 뒤, 편집기 내용을 <strong>전체 선택하여 복사한 규칙으로 교체</strong>하세요.</li>
+      <li><strong>게시(Publish)</strong>를 누르고, PACE에서 목표 저장을 다시 시도하세요.</li>
+    </ol>
+    <div class="actions">
+      <button id="copyButton" type="button">전체 규칙 복사</button>
+      <a href="https://console.firebase.google.com/project/english-mastery-d4427/firestore/databases/-default-/rules" target="_blank" rel="noopener noreferrer">Firebase 규칙 콘솔 열기 ↗</a>
+    </div>
+    <p id="status" role="status" aria-live="polite">이 페이지는 규칙을 복사하는 도구이며, 자동으로 배포하지 않습니다.</p>
+    <label for="rules">firestore.rules · 전체 내용 (읽기 전용)</label>
+    <textarea id="rules" readonly spellcheck="false" wrap="off" aria-describedby="manualHint">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function admin() {
+      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.enabled == true;
+    }
+    function member() { return signedIn() && exists(/databases/$(database)/documents/members/$(request.auth.uid)); }
+    function studentId() { return get(/databases/$(database)/documents/members/$(request.auth.uid)).data.studentId; }
+    function own(id) { return member() && studentId() == id
+      && exists(/databases/$(database)/documents/students/$(string(id)))
+      && get(/databases/$(database)/documents/students/$(string(id))).data.get('accountUid', '') == request.auth.uid; }
+    function linkedWritable(id) {
+      return own(id) && exists(/databases/$(database)/documents/students/$(string(id)))
+        && get(/databases/$(database)/documents/students/$(string(id))).data.get('linking', false) == false;
+    }
+    function writable(id) {
+      return linkedWritable(id)
+        && get(/databases/$(database)/documents/students/$(string(id))).data.get('accessMode', 'FULL') == 'FULL';
+    }
+    function calendarWritable(id) {
+      return linkedWritable(id)
+        && get(/databases/$(database)/documents/students/$(string(id))).data.get('accessMode', 'FULL') == 'CALENDAR_ONLY';
+    }
+    function calendarResult(data, type) {
+      let testId = data.get('testId', '');
+      return calendarWritable(data.studentId) && testId is string && testId != ''
+        && exists(/databases/$(database)/documents/tests/$(testId))
+        && get(/databases/$(database)/documents/tests/$(testId)).data.studentId == data.studentId
+        && get(/databases/$(database)/documents/tests/$(testId)).data.type == type;
+    }
+    function calendarTestUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return calendarWritable(resource.data.studentId) && (
+        (resource.data.type == 'VOCAB' && changed.hasOnly(['status','score','retestStatus']))
+        || (resource.data.type == 'GRAMMAR' && changed.hasOnly([
+          'status','grammarStage','grammarResults','grammarUpdatedAt','grammarStartedAt','grammarDraft','grammarDraftSavedAt'
+        ]))
+        || (resource.data.type in ['PRACTICE','TEXT_MEMORIZE']
+          && (request.resource.data.get('allowRetest', false) == resource.data.get('allowRetest', false)
+            || request.resource.data.get('allowRetest', false) == false)
+          && ((resource.data.type == 'PRACTICE' && changed.hasOnly(['status','score','retestStatus','practiceResult','allowRetest']))
+            || (resource.data.type == 'TEXT_MEMORIZE' && changed.hasOnly(['status','score','retestStatus','textMemorizeResult','allowRetest']))))
+        || (resource.data.type == 'VOCAB_REVIEW' && changed.hasOnly([
+          'status','score','weeklyReviewResult','reviewStage','reviewRevision','questions','sourceRefs','sourceSignature','unlockedAt','updatedAt',
+          'missingDays','completedDays','requiredDays','dataIssues','reviewMessage','initialWrongCount',
+          'sourceTestIds','assignedDays','weekdayCompletion','unresolvedCount','blockedReason','reviewVersion'
+        ]))
+      );
+    }
+    function accountAfter() { return getAfter(/databases/$(database)/documents/members/$(request.auth.uid)).data; }
+    function validRedemption(code) {
+      return signedIn() && !member()
+        && get(/databases/$(database)/documents/invites/$(code)).data.status == 'unused'
+        && getAfter(/databases/$(database)/documents/invites/$(code)).data.status == 'used'
+        && getAfter(/databases/$(database)/documents/invites/$(code)).data.usedBy == request.auth.uid;
+    }
+    match /admins/{uid} {
+      allow get: if signedIn() && (uid == request.auth.uid || admin());
+      allow list: if admin();
+      allow write: if false; // Bootstrap/revoke with the privileged operator tool only.
+    }
+    match /members/{uid} {
+      allow get: if signedIn() && (uid == request.auth.uid || admin());
+      allow list: if admin();
+      allow create: if signedIn() && uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid','name','loginId','studentId','inviteCode','createdAt'])
+        && request.resource.data.uid == uid
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 40
+        && request.resource.data.loginId.matches('^[a-z0-9_]{4,20}$')
+        && request.auth.token.email == request.resource.data.loginId + '@accounts.pace.invalid'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.studentId is int
+        && validRedemption(request.resource.data.inviteCode)
+        && !exists(/databases/$(database)/documents/students/$(string(request.resource.data.studentId)))
+        && getAfter(/databases/$(database)/documents/students/$(string(request.resource.data.studentId))).data.accountUid == uid;
+      allow update: if admin();
+      allow delete: if admin();
+    }
+    match /invites/{code} {
+      allow get: if signedIn();
+      allow list: if admin();
+      allow create: if admin() && code.matches('^[A-Z0-9]{6}$') && code.matches('.*[A-Z].*') && code.matches('.*[0-9].*')
+        && request.resource.data.keys().hasOnly(['code','status','createdAt','createdBy'])
+        && request.resource.data.code == code && request.resource.data.status == 'unused'
+        && request.resource.data.createdBy == request.auth.uid && request.resource.data.createdAt == request.time;
+      allow update: if (admin() && resource.data.status == 'unused' && request.resource.data.status == 'cancelled'
+          && (request.resource.data.get('allowRetest', false) == resource.data.get('allowRetest', false) || request.resource.data.get('allowRetest', false) == false)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
+        || (signedIn() && validRedemption(code)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','usedBy','usedAt'])
+          && request.resource.data.usedAt == request.time && accountAfter().inviteCode == code
+          && accountAfter().uid == request.auth.uid);
+      allow delete: if false;
+    }
+    match /students/{id} {
+      allow get: if admin() || (signedIn() && !exists(/databases/$(database)/documents/students/$(id))) || own(resource.data.id);
+      allow list: if admin() || own(resource.data.id);
+      allow create: if admin() || (signedIn() && !member()
+        && request.resource.data.keys().hasOnly(['id','name','target','accessMode','accountUid','newAccount'])
+        && request.resource.data.id is int && string(request.resource.data.id) == id
+        && request.resource.data.id >= 1000000000000
+        && request.resource.data.accountUid == request.auth.uid
+        && request.resource.data.newAccount == true && request.resource.data.target == '' && request.resource.data.accessMode == 'FULL'
+        && request.resource.data.name == accountAfter().name && accountAfter().studentId == request.resource.data.id
+        && validRedemption(accountAfter().inviteCode));
+      allow update: if admin() || (linkedWritable(resource.data.id)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['target'])
+        && request.resource.data.target is string && request.resource.data.target.size() <= 200);
+      allow delete: if admin();
+    }
+    match /vocabSets/{id} {
+      // Shared dictionaries contain learning content, not private student records.
+      allow read: if admin() || member();
+      allow write: if admin();
+    }
+    match /tests/{id} {
+      allow read: if admin() || own(resource.data.studentId);
+      // Transactions must be able to read their not-yet-created weekly document.
+      allow get: if !exists(/databases/$(database)/documents/tests/$(id))
+        && (writable(studentId()) || calendarWritable(studentId()))
+        && id.matches('^weekly_review_' + string(studentId()) + '_[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+      allow create: if admin() || ((writable(request.resource.data.studentId) || calendarWritable(request.resource.data.studentId)) && request.resource.data.type == 'VOCAB_REVIEW'
+        && id == 'weekly_review_' + string(request.resource.data.studentId) + '_' + request.resource.data.weekStart);
+      allow update: if admin() || (writable(resource.data.studentId)
+        && request.resource.data.studentId == resource.data.studentId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status','score','retestStatus','retestDate','allowRetest','practiceResult','vocabResult','textMemorizeResult',
+          'grammarStage','grammarResults','grammarUpdatedAt','grammarStartedAt','grammarDraft','grammarDraftSavedAt','weeklyReviewResult',
+          'reviewStage','reviewRevision','questions','sourceRefs','sourceSignature','unlockedAt','updatedAt',
+          'missingDays','completedDays','requiredDays','dataIssues','reviewMessage','initialWrongCount',
+          'sourceTestIds','assignedDays','weekdayCompletion','unresolvedCount','blockedReason','reviewVersion'
+        ])) || calendarTestUpdate();
+      allow delete: if admin();
+    }
+    match /{collection}/{id} {
+      allow read: if collection in ['vocabTestResults','textMemorizeResults'] && (admin() || own(resource.data.studentId));
+      allow create: if collection in ['vocabTestResults','textMemorizeResults'] && (admin() || writable(request.resource.data.studentId)
+        || (collection == 'vocabTestResults' && calendarResult(request.resource.data, 'VOCAB'))
+        || (collection == 'textMemorizeResults' && calendarResult(request.resource.data, 'TEXT_MEMORIZE')));
+      allow update: if collection in ['vocabTestResults','textMemorizeResults'] && (admin()
+        || (request.resource.data.studentId == resource.data.studentId && (writable(resource.data.studentId)
+          || (((collection == 'vocabTestResults' && calendarResult(request.resource.data, 'VOCAB'))
+              || (collection == 'textMemorizeResults' && calendarResult(request.resource.data, 'TEXT_MEMORIZE')))
+            && (resource.data.get('testId', '') == '' || request.resource.data.testId == resource.data.testId)))));
+      allow delete: if collection in ['vocabTestResults','textMemorizeResults'] && admin();
+    }
+    match /academicRecords/{id} {
+      allow read: if admin() || own(resource.data.studentId);
+      allow create: if admin() || (writable(request.resource.data.studentId)
+        && request.resource.data.keys().hasOnly(['kind','studentId','items','updatedAt'])
+        && id == request.resource.data.kind + '_' + string(request.resource.data.studentId));
+      allow update: if admin() || (writable(resource.data.studentId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items','updatedAt']));
+      allow delete: if admin();
+    }
+    match /academicData/{id} { allow read, write: if admin(); }
+  }
+}
+</textarea>
+    <p id="manualHint" class="note">복사 버튼이 작동하지 않으면 위 내용을 클릭하고 Ctrl+A → Ctrl+C (Mac: ⌘A → ⌘C)로 복사하세요.</p>
+    <p class="note">이 파일은 생성 시점의 규칙 사본입니다. 이후 규칙이 바뀌면 저장소의 최신 <code>firestore.rules</code>를 사용하세요. 이 HTML 파일만으로 열 수 있으며 외부 스크립트나 로그인이 필요하지 않습니다. 실제 게시에는 Firebase 콘솔 로그인이 필요합니다.</p>
+  </main>
+  <script>
+    const rules = document.getElementById('rules');
+    const status = document.getElementById('status');
+    document.getElementById('copyButton').addEventListener('click', async () => {
+      try {
+        if (!navigator.clipboard || !window.isSecureContext) throw new Error('Clipboard unavailable');
+        await navigator.clipboard.writeText(rules.value);
+        status.textContent = '전체 규칙을 복사했습니다. Firebase 콘솔에 붙여넣고 게시하세요.';
+      } catch {
+        rules.focus();
+        rules.select();
+        rules.setSelectionRange(0, rules.value.length);
+        let copied = false;
+        try { copied = document.execCommand('copy'); } catch { /* Keep the rules selected for manual copying. */ }
+        status.textContent = copied
+          ? '전체 규칙을 복사했습니다. Firebase 콘솔에 붙여넣고 게시하세요.'
+          : '전체 규칙을 선택했습니다. Ctrl+C (Mac: ⌘C)로 복사하세요.';
+      }
+    });
+  </script>
+</body>
+</html>

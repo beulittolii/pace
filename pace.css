@@ -98,8 +98,7 @@ body:has(#paceReportView:not(.hidden)) #studentSidebar{display:none!important;}
 .pace-focus button:disabled{opacity:.6;cursor:default;}
 .pace-history{max-height:580px;overflow:auto;}
 .pace-report-empty{font-size:14px;line-height:1.8;color:#61775f;padding:2rem 0;}
-.pace-profile-action{color:#617267;font-size:11px;margin-top:.65rem;text-decoration:underline;text-underline-offset:4px;}
-.pace-home-heading>div:first-child{min-width:0}.pace-home-heading .pace-home-goal{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}.pace-home-goal>span{font-weight:700;color:#315345}.pace-home-date{flex-shrink:0}.pace-profile-divider{margin:0 8px;color:#a4b0a7;font-size:11px}
+.pace-home-heading>div:first-child{min-width:0}.pace-home-heading .pace-home-goal{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}.pace-home-goal>span{font-weight:700;color:#315345}.pace-home-date{flex-shrink:0}
 .pace-history>div>div{min-width:0;}
 .pace-history h3{overflow-wrap:anywhere;}
 .pace-history strong{flex-shrink:0;}
