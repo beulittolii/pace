@@ -1680,7 +1680,7 @@ const YBM_ENGLISH2_VOCAB_SETS = [
   {
     "id": "ybm2_lesson_03",
     "book": "백발백중 공통영어 2",
-    "title": "Lesson 3. Resilience",
+    "title": "Lesson 3. Rise Above Challenges",
     "lesson": 3,
     "studentIds": [],
     "words": [
@@ -1740,7 +1740,7 @@ const YBM_ENGLISH2_VOCAB_SETS = [
   {
     "id": "ybm2_lesson_04",
     "book": "백발백중 공통영어 2",
-    "title": "Lesson 4. Creative Ideas for a Better Life",
+    "title": "Lesson 4. Creative Ideas for a Better World",
     "lesson": 4,
     "studentIds": [],
     "words": [

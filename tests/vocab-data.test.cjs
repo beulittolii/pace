@@ -180,13 +180,14 @@ test('study modal opens single and multiple Highest Days, including static fallb
   assert.equal(run('App.state.vocabStudy.words[0].en'), 'mechanism');
 });
 
-test('YBM lessons 3 and 4 contain the complete public publisher vocabulary lists', () => {
+test('YBM lessons use verified unit names and retain publisher vocabulary order', () => {
   const run = fixture();
   const sets = JSON.parse(run('JSON.stringify(YBM_ENGLISH2_VOCAB_SETS)'));
   assert.deepEqual(sets.map(set => set.id), [
     'ybm2_lesson_01', 'ybm2_lesson_02', 'ybm2_lesson_03', 'ybm2_lesson_04'
   ]);
   const expected = [
+    // YES24 2026년용 하권 미리보기 p.011~012: 필수 단어 42개 다음 필수 표현 9개.
     ['achievable', 'adversity', 'blessing', 'breath', 'clarity', 'confront',
       'constructive', 'cope', 'crucial', 'cultivate', 'defeated', 'despite',
       'disability', 'exceptional', 'fulfilled', 'gradually', 'imperfection',
@@ -218,8 +219,8 @@ test('YBM lessons 3 and 4 contain the complete public publisher vocabulary lists
       assert.equal(typeof word.ipa, 'string');
     }
   });
-  assert.equal(sets[2].title, 'Lesson 3. Resilience');
-  assert.equal(sets[3].title, 'Lesson 4. Creative Ideas for a Better Life');
+  assert.equal(sets[2].title, 'Lesson 3. Rise Above Challenges');
+  assert.equal(sets[3].title, 'Lesson 4. Creative Ideas for a Better World');
 });
 
 test('YBM definitions use the existing defEn format and leave unverified entries empty', () => {
@@ -269,8 +270,8 @@ test('YBM lessons 3 and 4 are selectable for exams and combined vocabulary study
   run(read('app.js'));
   run("App.renderFormVocabSetSelect('ybm2_lesson_03','ybm2_lesson_04')");
   const options = run('elements.formVocabSetId.innerHTML');
-  assert.match(options, /Lesson 3\. Resilience \(51단어\)/);
-  assert.match(options, /Lesson 4\. Creative Ideas for a Better Life \(50단어\)/);
+  assert.match(options, /Lesson 3\. Rise Above Challenges \(51단어\)/);
+  assert.match(options, /Lesson 4\. Creative Ideas for a Better World \(50단어\)/);
   assert.match(run('elements.formVocabTotalWordsCount.innerText'), /총 101단어/);
   run(`for (const method of ['updateVocabStudyMeaningToggleBtn','updateVocabStudyModeButtons',
     'renderVocabStudyContent','renderVocabStudyFooter','showModal']) App[method]=()=>{};`);
@@ -278,4 +279,55 @@ test('YBM lessons 3 and 4 are selectable for exams and combined vocabulary study
   assert.equal(run('App.state.vocabStudy.words.length'), 101);
   assert.equal(run('App.state.vocabStudy.words.filter(w=>w.defEn).length'), 88);
   assert.ok(read('index.html').indexOf('src="ybm_english2_data.js?') < read('index.html').indexOf('src="data.js?'));
+});
+
+test('outdated YBM titles migrate once without changing vocabulary, assignments or results', () => {
+  const run = fixture();
+  run(`FirebaseStore.students=[];
+    FirebaseStore.vocabSets=JSON.parse(JSON.stringify(getDefaultVocabSets()));
+    const lesson3=FirebaseStore.vocabSets.find(s=>s.id==='ybm2_lesson_03');
+    const lesson4=FirebaseStore.vocabSets.find(s=>s.id==='ybm2_lesson_04');
+    lesson3.title='Lesson 3. Resilience';
+    lesson4.title='Lesson 4. Creative Ideas for a Better Life';
+    lesson3.studentIds=[12345];
+    lesson3.words[0].ko='직접 수정한 뜻';
+    lesson3.words[0].defEn='Teacher definition';
+    const savedWords3=lesson3.words;
+    const savedWords4=lesson4.words;
+    const savedAssignments=lesson3.studentIds;
+    const savedResults=[{id:'existing-result',setId:lesson3.id,score:100}];
+    FirebaseStore.vocabTestResults=savedResults;
+    const staleCloud=JSON.parse(JSON.stringify(FirebaseStore.vocabSets));
+    AppData.getVocabSets();`);
+  assert.equal(run('lesson3.title'), 'Lesson 3. Rise Above Challenges');
+  assert.equal(run('lesson4.title'), 'Lesson 4. Creative Ideas for a Better World');
+  assert.equal(run('lesson3.words===savedWords3 && lesson4.words===savedWords4'), true);
+  assert.equal(run('lesson3.studentIds===savedAssignments'), true);
+  assert.equal(run('lesson3.words[0].ko'), '직접 수정한 뜻');
+  assert.equal(run('lesson3.words[0].defEn'), 'Teacher definition');
+  assert.equal(run('FirebaseStore.vocabTestResults===savedResults'), true);
+  assert.equal(run('writes.length'), 1);
+  run('AppData.getVocabSets(); AppData.getVocabSets();');
+  assert.equal(run('writes.length'), 1);
+  run('FirebaseStore.vocabSets=staleCloud; AppData.getVocabSets();');
+  assert.equal(run("FirebaseStore.vocabSets.find(s=>s.id==='ybm2_lesson_03').title"),
+    'Lesson 3. Rise Above Challenges');
+  assert.equal(run('writes.length'), 2);
+});
+
+test('YBM title migration leaves custom titles and unrelated sets unchanged', () => {
+  const run = fixture();
+  run(`FirebaseStore.students=[];
+    FirebaseStore.vocabSets=JSON.parse(JSON.stringify(getDefaultVocabSets()));
+    const lesson3=FirebaseStore.vocabSets.find(s=>s.id==='ybm2_lesson_03');
+    const lesson4=FirebaseStore.vocabSets.find(s=>s.id==='ybm2_lesson_04');
+    lesson3.title='선생님이 지정한 3과';
+    lesson4.title='선생님이 지정한 4과';
+    const custom={id:'custom',title:'Lesson 3. Resilience',words:[]};
+    FirebaseStore.vocabSets.push(custom);
+    AppData.getVocabSets();`);
+  assert.equal(run('lesson3.title'), '선생님이 지정한 3과');
+  assert.equal(run('lesson4.title'), '선생님이 지정한 4과');
+  assert.equal(run('custom.title'), 'Lesson 3. Resilience');
+  assert.equal(run('writes.length'), 0);
 });
