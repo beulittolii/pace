@@ -10,7 +10,7 @@ function fixture() {
   const context = vm.createContext({ console, Date, Math, setTimeout, clearTimeout,
     localStorage: { getItem: () => null, setItem() {} } });
   const run = code => vm.runInContext(code, context);
-  for (const file of ['wordmaster2000_data.js', 'wordmaster_basic_data.js', 'wordmaster_highest_data.js', 'data.js']) run(read(file));
+  for (const file of ['wordmaster2000_data.js', 'wordmaster_basic_data.js', 'wordmaster_highest_data.js', 'ybm_english2_data.js', 'data.js']) run(read(file));
   run('const writes=[]; AppData.replaceCollection=async (name,items)=>writes.push({name,count:items.length});');
   return run;
 }
@@ -178,4 +178,104 @@ test('study modal opens single and multiple Highest Days, including static fallb
   assert.equal(run('App.state.vocabStudy.words.length'), 30);
   assert.equal(run("App.state.vocabStudy.words.some(w=>w.en==='municipal')"), true);
   assert.equal(run('App.state.vocabStudy.words[0].en'), 'mechanism');
+});
+
+test('YBM lessons 3 and 4 contain the complete public publisher vocabulary lists', () => {
+  const run = fixture();
+  const sets = JSON.parse(run('JSON.stringify(YBM_ENGLISH2_VOCAB_SETS)'));
+  assert.deepEqual(sets.map(set => set.id), [
+    'ybm2_lesson_01', 'ybm2_lesson_02', 'ybm2_lesson_03', 'ybm2_lesson_04'
+  ]);
+  const expected = [
+    ['achievable', 'adversity', 'blessing', 'breath', 'clarity', 'confront',
+      'constructive', 'cope', 'crucial', 'cultivate', 'defeated', 'despite',
+      'disability', 'exceptional', 'fulfilled', 'gradually', 'imperfection',
+      'judge', 'loss', 'medical', 'meditate', 'mindset', 'observe', 'obstacle',
+      'opportunity', 'overcome', 'participate', 'particularly', 'passive',
+      'potential', 'poverty', 'proceed', 'psychologist', 'realistic', 'regret',
+      'reject', 'resilience', 'setback', 'strategy', 'suffering', 'surgery',
+      'uncertainty', 'apply A to B', 'be known as', 'bounce back', 'break down into',
+      'compete against', 'give it a try', 'look after', 'single out', 'take the form of'],
+    ['accessible', 'affordable', 'awkward', 'bulky', 'capable', 'compatibility',
+      'component', 'compromise', 'crucial', 'delicate', 'detect', 'determined',
+      'diagnosis', 'distribute', 'emerge', 'enhance', 'establish', 'examine',
+      'expand', 'external', 'eyepiece', 'high-resolution', 'illuminate', 'infectious',
+      'instrument', 'magnification', 'mere', 'microscope', 'organism', 'particle',
+      'portable', 'precision', 'project', 'publish', 'remain', 'resource', 'specimen',
+      'structure', 'uniform', 'waterproof', 'be responsible for', 'come across',
+      'come up with', 'for the benefit of', 'from side to side', 'in progress',
+      'make a difference', 'meet requirements', 'settle on', 'take shape']
+  ];
+  sets.slice(2).forEach((set, index) => {
+    assert.equal(set.lesson, index + 3);
+    assert.equal(set.book, '백발백중 공통영어 2');
+    assert.deepEqual(set.words.map(word => word.en), expected[index]);
+    assert.equal(new Set(set.words.map(word => word.en)).size, set.words.length);
+    for (const word of set.words) {
+      assert.match(word.ko, /[가-힣]/);
+      assert.doesNotMatch(word.ko, /[<>�]/);
+      assert.equal(typeof word.defEn, 'string');
+      assert.equal(typeof word.ipa, 'string');
+    }
+  });
+  assert.equal(sets[2].title, 'Lesson 3. Resilience');
+  assert.equal(sets[3].title, 'Lesson 4. Creative Ideas for a Better Life');
+});
+
+test('YBM definitions use the existing defEn format and leave unverified entries empty', () => {
+  const run = fixture();
+  const sets = JSON.parse(run('JSON.stringify(YBM_ENGLISH2_VOCAB_SETS.slice(2))'));
+  const missing = [
+    ['achievable', 'medical', 'realistic', 'setback', 'break down into', 'give it a try'],
+    ['be responsible for', 'come up with', 'for the benefit of', 'from side to side',
+      'make a difference', 'meet requirements', 'settle on']
+  ];
+  sets.forEach((set, index) => {
+    assert.equal(set.words.filter(word => word.defEn).length, [45, 43][index]);
+    assert.deepEqual(set.words.filter(word => !word.defEn).map(word => word.en), missing[index]);
+    for (const word of set.words) {
+      assert.doesNotMatch(word.defEn, /[가-힣<>\n]|^\[/);
+    }
+  });
+  assert.equal(sets[0].words.find(word => word.en === 'imperfection').defEn,
+    'a flaw or defect; lack of perfection');
+  assert.equal(sets[1].words.find(word => word.en === 'microscope').defEn,
+    'a scientific instrument used to magnify and observe very small objects');
+});
+
+test('old YBM caches gain lessons 3 and 4 without replacing edits or duplicating sets', () => {
+  const run = fixture();
+  run(`FirebaseStore.students=[{id:10001}]; FirebaseStore.studentsLoaded=true;
+    const edited={...getDefaultVocabSets().find(s=>s.id==='ybm2_lesson_01'),title:'직접 수정한 제목'};
+    const custom={id:'custom-ybm',book:'개인 단어장',words:[{en:'apple',ko:'사과'}],studentIds:[10001]};
+    FirebaseStore.vocabSets=[edited,custom]; AppData.getVocabSets();`);
+  assert.equal(run("AppData.getVocabSets().filter(s=>s.id.startsWith('ybm2_lesson_')).length"), 4);
+  assert.equal(run("AppData.getVocabSets().find(s=>s.id==='ybm2_lesson_01')===edited"), true);
+  assert.equal(run('edited.title'), '직접 수정한 제목');
+  assert.equal(run("AppData.getVocabSets().find(s=>s.id==='custom-ybm')===custom"), true);
+  assert.equal(run(`AppData.getVocabSetsByStudentId(10001).filter(s=>
+    ['ybm2_lesson_03','ybm2_lesson_04'].includes(s.id)).length`), 2);
+  assert.equal(run('writes.length'), 1);
+  run('AppData.getVocabSets(); AppData.getVocabSets();');
+  assert.equal(run('writes.length'), 1);
+});
+
+test('YBM lessons 3 and 4 are selectable for exams and combined vocabulary study', () => {
+  const run = fixture();
+  run(`const window={}; const elements={
+    formVocabSetId:{value:'ybm2_lesson_03'},formVocabSetId2:{value:'ybm2_lesson_04'},
+    formVocabTotalWordsCount:{},formVocabSummaryBadge:{},formVocabSelectedListText:{}};
+    const document={addEventListener(){},getElementById:id=>elements[id]||null,querySelector:()=>null};`);
+  run(read('app.js'));
+  run("App.renderFormVocabSetSelect('ybm2_lesson_03','ybm2_lesson_04')");
+  const options = run('elements.formVocabSetId.innerHTML');
+  assert.match(options, /Lesson 3\. Resilience \(51단어\)/);
+  assert.match(options, /Lesson 4\. Creative Ideas for a Better Life \(50단어\)/);
+  assert.match(run('elements.formVocabTotalWordsCount.innerText'), /총 101단어/);
+  run(`for (const method of ['updateVocabStudyMeaningToggleBtn','updateVocabStudyModeButtons',
+    'renderVocabStudyContent','renderVocabStudyFooter','showModal']) App[method]=()=>{};`);
+  run("App.openVocabStudyModal('ybm2_lesson_03,ybm2_lesson_04')");
+  assert.equal(run('App.state.vocabStudy.words.length'), 101);
+  assert.equal(run('App.state.vocabStudy.words.filter(w=>w.defEn).length'), 88);
+  assert.ok(read('index.html').indexOf('src="ybm_english2_data.js?') < read('index.html').indexOf('src="data.js?'));
 });
