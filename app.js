@@ -1805,6 +1805,7 @@ const App = {
     document.getElementById('rescheduleTargetDate').value = test.date || this.formatDate(new Date());
     document.getElementById('rescheduleTargetTime').value = test.time || '';
     document.getElementById('rescheduleTargetEndTime').value = test.endTime || '';
+    document.getElementById('rescheduleTimeSection').classList.toggle('hidden', test.type === 'VOCAB');
 
     this.showModal('rescheduleTestModal');
   },
@@ -1843,8 +1844,13 @@ const App = {
 
     const oldDate = test.date;
     test.date = newDate;
-    if (newTime) test.time = newTime;
-    if (newEndTime) test.endTime = newEndTime;
+    if (test.type === 'VOCAB') {
+      test.time = '';
+      test.endTime = '';
+    } else {
+      if (newTime) test.time = newTime;
+      if (newEndTime) test.endTime = newEndTime;
+    }
 
     // 만약 연장 날짜가 원래 날짜보다 이전이 되면 연장 정보 초기화
     if (test.extendedDate && test.extendedDate < newDate) {
@@ -1898,14 +1904,23 @@ const App = {
 
     const now = new Date();
     const testDate = String(test.date).trim();
+    const isVocab = test.type === 'VOCAB';
 
     // 시작 시간
-    const startDateTime = this.parseDateTime(testDate, test.time, false) || new Date(`${testDate}T00:00:00`);
+    const startDateTime = this.parseDateTime(testDate, isVocab ? '05:00' : test.time, false) || new Date(`${testDate}T00:00:00`);
 
     // 종료 시간 (연장일시가 있으면 연장일시 우선, 없으면 기본 마감일시)
-    const effectiveEndDate = (test.extendedDate && String(test.extendedDate).trim()) ? String(test.extendedDate).trim() : testDate;
-    const effectiveEndTime = (test.extendedEndTime && String(test.extendedEndTime).trim()) ? String(test.extendedEndTime).trim() : (test.endTime || '23:59:59');
-    const endDateTime = this.parseDateTime(effectiveEndDate, effectiveEndTime, true) || new Date(`${effectiveEndDate}T23:59:59`);
+    const extendedDate = test.extendedDate ? String(test.extendedDate).trim() : '';
+    const extendedEndTime = test.extendedEndTime ? String(test.extendedEndTime).trim() : '';
+    const isVocabDayWindow = isVocab && !extendedDate && !extendedEndTime;
+    let effectiveEndDate = extendedDate || testDate;
+    const effectiveEndTime = extendedEndTime || (isVocab ? '23:59:59' : (test.endTime || '23:59:59'));
+    let endDateTime = this.parseDateTime(effectiveEndDate, effectiveEndTime, true) || new Date(`${effectiveEndDate}T23:59:59`);
+    if (isVocabDayWindow) {
+      endDateTime = new Date(startDateTime);
+      endDateTime.setDate(endDateTime.getDate() + 1);
+      effectiveEndDate = this.formatDate(endDateTime);
+    }
 
     // 1. 이미 통과(PASS) 또는 문제풀이 응시 완료된 경우 시간과 무관하게 무조건 '완료' (COMPLETED)
     if (test.status === 'PASS' || test.retestStatus === 'RETEST_PASS' || test.practiceResult?.passed || (test.type === 'PRACTICE' && test.practiceResult)) {
@@ -1913,7 +1928,7 @@ const App = {
     }
 
     // 2. 마감이 지난 경우 (미통과 상태에서 종료 시간 초과) - 단어 테스트 포함 모든 시험에 철저히 적용
-    if (now > endDateTime) {
+    if (isVocabDayWindow ? now >= endDateTime : now > endDateTime) {
       if (test.allowLate) {
         return { status: 'IN_PROGRESS', label: '지각 응시 허용', canStart: true, message: '' };
       }
@@ -1925,8 +1940,8 @@ const App = {
       };
     }
 
-    // 3. 문제풀이 시험(PRACTICE) 및 단어 테스트(VOCAB)는 마감 전 상시/사전 응시 가능
-    if (test.type === 'PRACTICE' || test.type === 'VOCAB') {
+    // 3. 문제풀이 시험(PRACTICE)은 마감 전 상시/사전 응시 가능
+    if (test.type === 'PRACTICE') {
       return {
         status: 'IN_PROGRESS',
         label: test.type === 'PRACTICE' ? '응시 가능 (하루종일 / 상시 응시)' : '응시 가능',
@@ -1936,7 +1951,7 @@ const App = {
     }
 
     // 4. 하루종일 시험은 당일 00:00부터 23:59까지 자유롭게 응시 가능
-    const isAllDayExam = test.time === '00:00' || test.time === '18:00';
+    const isAllDayExam = !isVocab && (test.time === '00:00' || test.time === '18:00');
     const dayStartDateTime = new Date(`${testDate}T00:00:00`);
     if (isAllDayExam && now >= dayStartDateTime && now <= endDateTime) {
       return {
@@ -1950,7 +1965,7 @@ const App = {
     // 5. 시험 시작 전 여부 체크 (지정 날짜 이전인 경우)
     const effectiveStartDateTime = isAllDayExam ? dayStartDateTime : startDateTime;
     if (now < effectiveStartDateTime) {
-      const timeStr = isAllDayExam ? '시험 당일' : (test.time ? `${test.time}` : '시험 당일');
+      const timeStr = isAllDayExam || isVocab ? '시험 당일' : (test.time ? `${test.time}` : '시험 당일');
       return {
         status: 'NOT_STARTED',
         label: `시작 전 (${timeStr}부터 가능)`,
@@ -4018,7 +4033,7 @@ const App = {
     document.querySelectorAll('.form-regular-only').forEach(element => element.classList.toggle('hidden', !isRegular));
     document.getElementById('formTeacherNoteSection').classList.toggle('hidden', !isRegular && !isGrammar);
     document.querySelectorAll('.form-regular-or-practice').forEach(element => element.classList.toggle('hidden', isVocab || isTextMemorize || isGrammar));
-    document.querySelectorAll('.form-time-applicable').forEach(element => element.classList.remove('hidden'));
+    document.querySelectorAll('.form-time-applicable').forEach(element => element.classList.toggle('hidden', isVocab));
 
     // 본문 암기 및 단어 테스트는 제목 입력창 숨김 및 자동 고정
     const formTitleSection = document.getElementById('formTitleSection');
@@ -4603,8 +4618,8 @@ const App = {
 
     let title = (isVocabTest) ? (document.getElementById('formTitle')?.value?.trim() || '단어 테스트') : (isTextMemorize ? '본문암기 테스트' : document.getElementById('formTitle').value.trim());
     const date = document.getElementById('formDate').value;
-    const time = document.getElementById('formTime').value.trim();
-    const endTime = document.getElementById('formEndTime').value.trim();
+    const time = isVocabTest ? '' : document.getElementById('formTime').value.trim();
+    const endTime = isVocabTest ? '' : document.getElementById('formEndTime').value.trim();
 
     const regularCutoff = document.getElementById('formCutoff')?.value.trim() || '80점 이상';
     const vocabCutoff2 = Number(document.getElementById('formVocabCutoff_2')?.value ?? 80);
