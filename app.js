@@ -3455,6 +3455,7 @@ const App = {
     const students = AppData.getStudents();
     container.innerHTML = `
       ${students.map(student => {
+      const isDeleting = this._deletingStudentIds?.has(student.id);
       return `
         <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
           <div class="flex items-center space-x-3">
@@ -3486,8 +3487,8 @@ const App = {
           </div>
 
           <div class="pt-2 flex items-center justify-between gap-3">
-            <button onclick="App.confirmDeleteStudentProfile(${student.id})" class="px-3 py-2 rounded-xl text-rose-600 border border-rose-200 bg-white font-bold text-xs hover:bg-rose-50 transition">
-              <i class="fa-solid fa-trash-can mr-1"></i>삭제
+            <button id="deleteStudent_${student.id}" onclick="App.confirmDeleteStudentProfile(${student.id})" ${isDeleting ? 'disabled' : ''} class="px-3 py-2 rounded-xl text-rose-600 border border-rose-200 bg-white font-bold text-xs hover:bg-rose-50 transition">
+              ${isDeleting ? '삭제 중…' : '<i class="fa-solid fa-trash-can mr-1"></i>삭제'}
             </button>
             <button onclick="App.handleSaveStudentProfile(${student.id})" class="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 transition shadow-sm">
               프로필 저장
@@ -3515,10 +3516,20 @@ const App = {
   },
 
   async confirmDeleteStudentProfile(studentId) {
+    studentId = Number(studentId);
+    if (this._deletingStudentIds?.has(studentId)) return;
     const student = AppData.getStudentById(studentId);
     if (!student) return;
     if (!confirm(`'${student.name}' 학생 계정을 삭제할까요?\n해당 학생의 시험 일정, 응시 결과와 학업관리 기록도 함께 삭제되며 되돌릴 수 없습니다.`)) return;
 
+    this._deletingStudentIds ||= new Set();
+    this._deletingStudentIds.add(studentId);
+    const button = document.getElementById(`deleteStudent_${studentId}`);
+    const originalLabel = button?.innerHTML || '<i class="fa-solid fa-trash-can mr-1"></i>삭제';
+    if (button) {
+      button.disabled = true;
+      button.innerHTML = '삭제 중…';
+    }
     try {
       await AppData.deleteStudent(studentId);
       const remainingStudents = AppData.getStudents();
@@ -3528,6 +3539,13 @@ const App = {
     } catch (error) {
       console.error(error);
       this.toast('학생 계정 삭제에 실패했습니다.', 'error');
+    } finally {
+      this._deletingStudentIds.delete(studentId);
+      const currentButton = document.getElementById(`deleteStudent_${studentId}`);
+      if (currentButton) {
+        currentButton.disabled = false;
+        currentButton.innerHTML = originalLabel;
+      }
     }
   },
 

@@ -2069,33 +2069,54 @@ const AppData = {
     const { collection, getDocs, runTransaction } = window.firebaseFns;
     const db = window.firebaseDB;
     const collections = ['tests', 'vocabTestResults', 'textMemorizeResults', 'vocabSets', 'academicData', 'academicRecords', 'members'];
-    const snapshots = await Promise.all(collections.map(name => getDocs(collection(db, name))));
+    const snapshots = await this.withCloudTimeout(
+      Promise.all(collections.map(name => getDocs(collection(db, name)))),
+      '학생 삭제 자료 조회'
+    );
+    const cleanupChange = (name, documentId, value) => {
+      if (['tests', 'vocabTestResults', 'textMemorizeResults', 'academicRecords', 'members'].includes(name)) {
+        return Number(value.studentId) === normalizedStudentId ? { remove: true } : null;
+      }
+      if (name === 'vocabSets') {
+        const ids = Array.isArray(value.studentIds) ? value.studentIds : [];
+        const kept = ids.filter(id => Number(id) !== normalizedStudentId);
+        return kept.length !== ids.length ? { update: { studentIds: kept } } : null;
+      }
+      if (value.items) {
+        const entries = Object.entries(value.items).filter(([key, item]) =>
+          !(item && typeof item === 'object' && Number(item.studentId) === normalizedStudentId) &&
+          !(documentId === 'academicTargetUnivs' && Number(key) === normalizedStudentId));
+        if (entries.length !== Object.keys(value.items).length) {
+          const update = { items: Array.isArray(value.items) ? entries.map(([, item]) => item) : Object.fromEntries(entries) };
+          if ('count' in value) update.count = entries.length;
+          return { update };
+        }
+      }
+      return null;
+    };
+    const cleanupJobs = [];
+    const membershipJobs = [];
     for (let i = 0; i < collections.length; i++) {
       const name = collections[i];
       for (const document of snapshots[i].docs) {
-        await runTransaction(db, async tx => {
+        if (!cleanupChange(name, document.id, document.data())) continue;
+        const jobs = name === 'members' ? membershipJobs : cleanupJobs;
+        jobs.push(() => runTransaction(db, async tx => {
           const latest = await tx.get(document.ref);
           if (!latest.exists()) return;
-          const value = latest.data();
-          if (['tests', 'vocabTestResults', 'textMemorizeResults', 'academicRecords', 'members'].includes(name)) {
-            if (Number(value.studentId) === normalizedStudentId) tx.delete(document.ref);
-          } else if (name === 'vocabSets') {
-            const ids = value.studentIds || [];
-            const kept = ids.filter(id => Number(id) !== normalizedStudentId);
-            if (kept.length !== ids.length) tx.update(document.ref, { studentIds: kept });
-          } else if (value.items) {
-            const isArray = Array.isArray(value.items);
-            const entries = Object.entries(value.items).filter(([key, item]) =>
-              !(item && typeof item === 'object' && Number(item.studentId) === normalizedStudentId) &&
-              !(document.id === 'academicTargetUnivs' && Number(key) === normalizedStudentId));
-            if (entries.length !== Object.keys(value.items).length) {
-              const items = isArray ? entries.map(([, item]) => item) : Object.fromEntries(entries);
-              const update = { items };
-              if ('count' in value) update.count = entries.length;
-              tx.update(document.ref, update);
-            }
-          }
-        });
+          const change = cleanupChange(name, document.id, latest.data());
+          if (change?.remove) tx.delete(document.ref);
+          else if (change?.update) tx.update(document.ref, change.update);
+        }));
+      }
+    }
+    // 불필요한 트랜잭션은 생략하고, 네트워크 작업을 제한된 수만 병렬로 실행합니다.
+    // 학습 기록 정리가 성공한 뒤에만 가입 계정 연결을 삭제합니다.
+    for (const jobs of [cleanupJobs, membershipJobs]) {
+      for (let i = 0; i < jobs.length; i += 10) {
+        const results = await Promise.allSettled(jobs.slice(i, i + 10).map(job => job()));
+        const failed = results.find(result => result.status === 'rejected');
+        if (failed) throw failed.reason;
       }
     }
     // 종속 기록 정리가 실패하면 계정은 남겨 재시도할 수 있게 합니다.
