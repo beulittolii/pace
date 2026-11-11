@@ -2242,9 +2242,19 @@ const AppData = {
 
     const defMap = new Map(defSets.map(s => [s.id, s]));
     let modified = false;
+    const outdatedYbmTitles = {
+      ybm2_lesson_03: 'Lesson 3. Resilience',
+      ybm2_lesson_04: 'Lesson 4. Creative Ideas for a Better Life'
+    };
 
     // 워드마스터 고등 Basic 2022 개정판(Day 1: include...) 최신 정본 데이터 즉시 보정
     current.forEach(s => {
+      // 이전 배포의 잘못된 단원명만 보정하고 직접 편집한 제목·단어·성적은 보존한다.
+      if (Object.prototype.hasOwnProperty.call(outdatedYbmTitles, s.id) &&
+          s.title === outdatedYbmTitles[s.id] && defMap.has(s.id)) {
+        s.title = defMap.get(s.id).title;
+        modified = true;
+      }
       if (s.id && s.id.startsWith('wm_highest_') && defMap.has(s.id)) {
         // 기존 캐시/클라우드의 알파벳순을 교재 순서로 보정한다.
         // 동일한 30개 표제어가 있는 세트만 정렬하여 사용자 추가/삭제/철자 편집은 보존한다.

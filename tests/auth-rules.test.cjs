@@ -103,8 +103,23 @@ async function calendarStudent() {
   await f.updateDoc(f.doc(admin,'students',String(id)),{accessMode:'CALENDAR_ONLY'});
   for(const item of [schedule,{...schedule,id:'other-vocab',studentId:42},{...schedule,id:'grammar',type:'GRAMMAR',grammarStage:'concept',grammarResults:{}},{...schedule,id:'text',type:'TEXT_MEMORIZE',allowRetest:true},{...schedule,id:'practice',type:'PRACTICE',allowRetest:true},{...schedule,id:'regular',type:'REGULAR'}]) await f.setDoc(f.doc(admin,'tests',item.id),item);
  });
- return {auth,db,id,schedule};
+  return {auth,db,id,schedule};
 }
+
+test('students can edit only their own bounded learning goal, including calendar-only accounts',async()=>{
+ const {db,id}=await calendarStudent(),ref=f.doc(db,'students',String(id));
+ await assertSucceeds(f.updateDoc(ref,{target:'매일 단어 30개 외우기'}));
+ await assertSucceeds(f.updateDoc(ref,{target:'a'.repeat(200)}));
+ await assertSucceeds(f.updateDoc(ref,{target:''}));
+ for(const patch of [{target:'a'.repeat(201)},{target:42},{target:null},{target:f.deleteField()},{target:'목표',name:'변경'},{accountUid:'other'},{id:42},{accessMode:'FULL'}]) await assertFails(f.updateDoc(ref,patch));
+ await env.withSecurityRulesDisabled(c=>f.setDoc(f.doc(c.firestore(),'students','42'),{id:42,target:'다른 학생',accountUid:'other'}));
+ await assertFails(f.updateDoc(f.doc(db,'students','42'),{target:'수정'}));
+ await assertFails(f.deleteDoc(ref));
+ await env.withSecurityRulesDisabled(c=>f.updateDoc(f.doc(c.firestore(),'students',String(id)),{linking:true}));
+ await assertFails(f.updateDoc(ref,{target:'수정'}));
+ await env.withSecurityRulesDisabled(c=>f.updateDoc(f.doc(c.firestore(),'students',String(id)),{linking:false,accountUid:'other'}));
+ await assertFails(f.updateDoc(ref,{target:'수정'}));
+});
 
 test('calendar-only students can bootstrap, save and update assigned vocabulary results and their schedule status',async()=>{
  const {db,id}=await calendarStudent();
