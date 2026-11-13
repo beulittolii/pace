@@ -1292,7 +1292,7 @@
 
   <footer class="mt-auto border-t border-slate-200 bg-white/70 py-6 text-center text-xs text-slate-400">
     <div class="max-w-7xl mx-auto px-4 flex items-center justify-center">
-      <p>v2.1.19</p>
+      <p>v2.1.20</p>
     </div>
   </footer>
 
@@ -1306,6 +1306,7 @@
       <div class="pace-dialog-heading p-5 bg-slate-900 text-white flex justify-between items-center"><h3 id="grammarAssignmentTitle" class="font-bold">문법 테스트 배정</h3><button type="button" onclick="App.hideModal('grammarAssignmentModal')" aria-label="닫기" class="p-2">✕</button></div>
       <form onsubmit="App.saveGrammarAssignment(event)" class="pace-dialog-body p-5 space-y-4">
         <label class="grammar-field">학생<select id="grammarAssignmentStudent" onchange="App.renderGrammarAssignmentParts()" required></select></label>
+        <label class="grammar-field">문법 단원<select id="grammarAssignmentUnit" onchange="App.renderGrammarAssignmentParts()" required></select></label>
         <div id="grammarAssignmentParts" class="grammar-notice"></div>
         <label class="grammar-field">시험 날짜<input id="grammarAssignmentDate" type="date" min="2026-11-01" required></label>
         <div class="grid grid-cols-2 gap-3"><label class="grammar-field">시작 시간<input id="grammarAssignmentTime" type="time" required></label><label class="grammar-field">마감 시간<input id="grammarAssignmentEndTime" type="time" required></label></div>
@@ -1500,6 +1501,8 @@
         <div id="formGrammarSection" class="hidden space-y-4">
           <div><label for="formGrammarStudent" class="block text-xs font-bold mb-2">대상 학생</label>
             <select id="formGrammarStudent" onchange="App.renderGrammarAssignmentParts(true)" class="w-full p-3 border border-slate-300 rounded-xl"></select></div>
+          <div><label for="formGrammarUnit" class="block text-xs font-bold mb-2">문법 단원</label>
+            <select id="formGrammarUnit" onchange="App.renderGrammarAssignmentParts(true)" class="w-full p-3 border border-slate-300 rounded-xl"></select></div>
           <div id="formGrammarParts"></div>
         </div>
 
@@ -4245,12 +4248,13 @@
 <script src="exam_scope_data.js?v=20261106_cleanup02"></script>
 <script src="science_questions.js?v=20261012_07"></script>
 <script src="weekly_review_logic.js?v=20261110_zero01"></script>
-<script src="grammar_data.js?v=20261109_retest01"></script>
+<script src="grammar_data.js?v=20261113_relative01"></script>
+<script src="grammar_paper.js?v=20261113_relative01"></script>
 <script src="data.js?v=20261112_student_delete01"></script>
-<script src="grammar_store.js?v=20261107_copy01"></script>
+<script src="grammar_store.js?v=20261113_relative01"></script>
 <script src="weekly_review_store.js?v=20261109_delete01"></script>
 <script src="app.js?v=20261112_student_delete01"></script>
-<script src="grammar.js?v=20261109_retest01"></script>
+<script src="grammar.js?v=20261113_relative01"></script>
 
 <script src="weekly_review.js?v=20261109_delete01"></script>
 

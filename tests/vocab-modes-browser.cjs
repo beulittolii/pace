@@ -27,7 +27,7 @@ let browser;
   await page.addScriptTag({content:fs.readFileSync(process.env.TAILWIND_SCRIPT_PATH || '/private/tmp/yem-tailwind-test.js','utf8')});
   await page.addStyleTag({content:'.hidden{display:none!important}*,*::before,*::after{transition:none!important;animation:none!important}'});
   await page.waitForFunction(()=>getComputedStyle(document.querySelector('header')).position==='sticky');
-  for(const file of ['data.js','grammar_data.js','grammar_store.js','weekly_review_logic.js','app.js','grammar.js','weekly_review.js']) {
+  for(const file of ['data.js','grammar_data.js','grammar_paper.js','grammar_store.js','weekly_review_logic.js','app.js','grammar.js','weekly_review.js']) {
     await page.addScriptTag({content:fs.readFileSync(path.join(root,file),'utf8')});
   }
   await page.evaluate(()=>{

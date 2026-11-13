@@ -18,7 +18,7 @@ const server=http.createServer((req,res)=>{
   await page.route('**/*',r=>r.request().url().startsWith('http://127.0.0.1:')?r.continue():r.abort());
   await page.goto(`http://127.0.0.1:${server.address().port}`);
   await page.addScriptTag({content:fs.readFileSync(process.env.TAILWIND_SCRIPT_PATH || '/private/tmp/yem-tailwind-test.js','utf8')+'\n'+inline.find(s=>s.includes('tailwind.config'))});
-  for(const file of ['weekly_review_logic.js','grammar_data.js','data.js','grammar_store.js','weekly_review_store.js','app.js','grammar.js','weekly_review.js','pace.js','auth.js','auth-data.js']) await page.addScriptTag({content:fs.readFileSync(path.join(root,file),'utf8')});
+   for(const file of ['weekly_review_logic.js','grammar_data.js','grammar_paper.js','data.js','grammar_store.js','weekly_review_store.js','app.js','grammar.js','weekly_review.js','pace.js','auth.js','auth-data.js']) await page.addScriptTag({content:fs.readFileSync(path.join(root,file),'utf8')});
    await page.evaluate(()=>{App.init();App.finishInitialLoading();});
    await page.waitForFunction(()=>document.getElementById('initialLoadingSkeleton').hidden);
   assert.equal(await page.locator('#rememberLogin').isChecked(),false);

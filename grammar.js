@@ -30,11 +30,18 @@ Object.assign(App, {
   grammarButton(label, action, secondary = false) {
     return `<button type="button" onclick="${action}" class="grammar-button ${secondary ? 'grammar-button-secondary' : ''}">${label}</button>`;
   },
+  grammarStudyLink(unitId) {
+    const unit = Object.hasOwn(GRAMMAR_UNITS, unitId) ? GRAMMAR_UNITS[unitId] : null;
+    return unit?.studyPdf ? `<p class="text-sm mb-3"><a href="${this.escapeHtml(unit.studyPdf)}" download class="font-bold text-violet-700 underline">${this.escapeHtml(unit.title)} 공부용 PDF 다운로드</a></p>` : '';
+  },
 
   initUnifiedGrammarForm() {
     const select = document.getElementById('formGrammarStudent');
     select.innerHTML = AppData.getStudents().map(s => `<option value="${s.id}">${this.escapeHtml(s.name)}</option>`).join('');
     select.value = this.state.adminSelectedStudentId;
+    const unitSelect = document.getElementById('formGrammarUnit');
+    unitSelect.innerHTML = Object.values(GRAMMAR_UNITS).map(unit => `<option value="${unit.id}">${this.escapeHtml(unit.title)}</option>`).join('');
+    unitSelect.value = GRAMMAR_UNIT.id;
     this.renderGrammarAssignmentParts(true);
   },
   async saveUnifiedGrammarAssignment(event) {
@@ -52,7 +59,8 @@ Object.assign(App, {
     button.disabled = true;
     try {
       const parts = [...document.querySelectorAll('[name="formGrammarPart"]:checked')].map(el => el.value);
-      await AppData.assignGrammarTest({ studentId, date, time, endTime, parts, note });
+      const unitId = document.getElementById('formGrammarUnit').value;
+      await AppData.assignGrammarTest({ studentId, date, time, endTime, parts, note, unitId });
       this.closeAdminTestFormModal();
       this.renderAdminTestsTab();
       this.toast('문법 시험 일정이 저장되었습니다.', 'success');
@@ -60,7 +68,7 @@ Object.assign(App, {
     finally { this._grammarAssignmentSaving = false; button.disabled = false; }
   },
 
-  openGrammarAssignmentModal(testId = null, studentId = null) {
+  openGrammarAssignmentModal(testId = null, studentId = null, unitId = 'subjunctive') {
     if (!this.state.isAdminLoggedIn) return;
     this.closeAllModals();
     const test = testId ? this.grammarTestById(testId) : null;
@@ -69,6 +77,10 @@ Object.assign(App, {
     document.getElementById('grammarAssignmentStudent').innerHTML = AppData.getStudents().map(s => `<option value="${s.id}">${this.escapeHtml(s.name)}</option>`).join('');
     document.getElementById('grammarAssignmentStudent').value = test?.studentId || studentId || this.state.adminSelectedStudentId;
     document.getElementById('grammarAssignmentStudent').disabled = Boolean(test);
+    const unitSelect = document.getElementById('grammarAssignmentUnit');
+    unitSelect.innerHTML = Object.values(GRAMMAR_UNITS).map(unit => `<option value="${unit.id}">${this.escapeHtml(unit.title)}</option>`).join('');
+    unitSelect.value = test?.grammarUnitId || unitId;
+    unitSelect.disabled = Boolean(test);
     document.getElementById('grammarAssignmentDate').value = test?.date || this.getTodayDateString();
     document.getElementById('grammarAssignmentTime').value = test?.time || '00:00';
     document.getElementById('grammarAssignmentEndTime').value = test?.endTime || '23:59';
@@ -79,10 +91,13 @@ Object.assign(App, {
   renderGrammarAssignmentParts(unified = false) {
     const studentId = Number(document.getElementById(unified ? 'formGrammarStudent' : 'grammarAssignmentStudent').value);
     const tests = AppData.getTests();
-    const existing = tests.some(t => t.type === 'GRAMMAR' && Number(t.studentId) === studentId && t.grammarUnitId === GRAMMAR_UNIT.id);
     const editing = unified ? null : this.grammarTestById(this._grammarAssignmentId);
-    const eligible = GrammarLogic.eligible(tests, studentId, GRAMMAR_UNIT.id);
-    document.getElementById(unified ? 'formGrammarParts' : 'grammarAssignmentParts').innerHTML = `<p class="text-sm font-bold mb-3">가정법 · 영역별 80점 이상 통과</p>
+    const unitId = editing?.grammarUnitId || document.getElementById(unified ? 'formGrammarUnit' : 'grammarAssignmentUnit').value;
+    const unit = Object.hasOwn(GRAMMAR_UNITS, unitId) ? GRAMMAR_UNITS[unitId] : GRAMMAR_UNIT;
+    const existing = tests.some(t => t.type === 'GRAMMAR' && Number(t.studentId) === studentId && t.grammarUnitId === unit.id);
+    const eligible = GrammarLogic.eligible(tests, studentId, unit.id);
+    document.getElementById(unified ? 'formGrammarParts' : 'grammarAssignmentParts').innerHTML = `<p class="text-sm font-bold mb-3">${this.escapeHtml(unit.title)} · 영역별 80점 이상 통과</p>
+      ${this.grammarStudyLink(unit.id)}
       <p class="text-xs text-slate-500 mb-3">${editing ? '배정 영역과 출제 내용은 유지하고 일정·안내를 수정합니다.' : existing ? '미달이 확정된 영역만 다시 배정할 수 있습니다.' : '최초 시험은 개념과 실전이 함께 배정됩니다.'}</p>
       <div class="flex flex-wrap gap-4">${GrammarLogic.parts.map(part => {
         const enabled = !editing && existing && eligible.includes(part);
@@ -107,7 +122,8 @@ Object.assign(App, {
         await AppData.updateGrammarTest(this._grammarAssignmentId, test => { Object.assign(test, { date, time, endTime, teacherNote: note }); });
       } else {
         const parts = [...document.querySelectorAll('[name="grammarPart"]:checked')].map(el => el.value);
-        await AppData.assignGrammarTest({ studentId, date, time, endTime, parts, note });
+        const unitId = document.getElementById('grammarAssignmentUnit').value;
+        await AppData.assignGrammarTest({ studentId, date, time, endTime, parts, note, unitId });
       }
       this.hideModal('grammarAssignmentModal');
       this.renderAdminTestsTab();
@@ -144,10 +160,11 @@ Object.assign(App, {
           return `<div data-grammar-result-widget="${part}" class="grammar-latest-card"><div><h5>${GrammarLogic.label(part)}</h5></div><span class="grammar-latest-status ${statusClass}">${current ? this.grammarStatus(current, part) : '미배정'}</span>${current?.grammarResults?.[part] ? resultButton(current, part, true) : ''}</div>`;
         }).join('')}</div>
       </div>
+      ${this.grammarStudyLink(test.grammarUnitId)}
       ${test.teacherNote ? `<div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 whitespace-pre-wrap">${this.escapeHtml(test.teacherNote)}</div>` : ''}
       <div class="space-y-2.5 pt-2">
         ${!isAdmin && test.grammarStage !== 'done' ? (timeStatus.canStart ? `<button type="button" onclick="App.startGrammarTest('${id}')" class="${actionClass}"><i aria-hidden="true" class="fa-solid fa-pencil"></i>테스트 응시</button>` : `<button disabled class="w-full py-3 rounded-xl bg-slate-100 border border-slate-200 text-slate-400 text-xs font-bold flex items-center justify-center gap-2 cursor-not-allowed"><i aria-hidden="true" class="fa-solid fa-clock"></i>${this.escapeHtml(timeStatus.message || '현재 응시할 수 없습니다.')}</button>`) : ''}
-        ${isAdmin ? `<button type="button" onclick="App.openGrammarAssignmentModal(null, ${test.studentId})" class="${actionClass}"><i aria-hidden="true" class="fa-solid fa-rotate-right"></i>문법 재시험 배정</button><div class="flex items-center gap-2 pt-1 border-t border-slate-100"><button type="button" onclick="App.openRescheduleModal('${id}')" class="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs"><i aria-hidden="true" class="fa-solid fa-calendar-days"></i>일정 이동</button><button type="button" onclick="App.openExtendTestModal('${id}')" class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs"><i aria-hidden="true" class="fa-solid fa-clock-rotate-left"></i>시간 연장</button><button type="button" onclick="App.openGrammarAssignmentModal('${id}')" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5"><i aria-hidden="true" class="fa-solid fa-pen-to-square"></i>전체 수정</button></div>` : ''}
+        ${isAdmin ? `<button type="button" onclick="App.openGrammarAssignmentModal(null, ${test.studentId}, '${test.grammarUnitId}')" class="${actionClass}"><i aria-hidden="true" class="fa-solid fa-rotate-right"></i>문법 재시험 배정</button><div class="flex items-center gap-2 pt-1 border-t border-slate-100"><button type="button" onclick="App.openRescheduleModal('${id}')" class="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs"><i aria-hidden="true" class="fa-solid fa-calendar-days"></i>일정 이동</button><button type="button" onclick="App.openExtendTestModal('${id}')" class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition flex items-center justify-center gap-1.5"><i aria-hidden="true" class="fa-solid fa-clock-rotate-left"></i>시간 연장</button><button type="button" onclick="App.openGrammarAssignmentModal('${id}')" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5"><i aria-hidden="true" class="fa-solid fa-pen-to-square"></i>전체 수정</button></div>` : ''}
       </div>
       ${attempts.length > 1 ? `<details class="text-xs border border-slate-200 rounded-xl p-3 bg-slate-50"><summary class="cursor-pointer font-bold text-slate-700">응시 이력 · 영역별 결과 (${attempts.length}회)</summary><div class="space-y-3 mt-3">${attempts.map(attempt => `<div class="p-3 rounded-xl bg-white border border-slate-200 space-y-2"><strong class="text-slate-700">${attempt.grammarSequence ? '재시험 ' + attempt.grammarSequence : '최초 시험'} · ${this.escapeHtml(attempt.date)}</strong><p class="text-slate-500">${this.grammarSummary(attempt)}</p>${GrammarLogic.parts.filter(p => attempt.grammarResults?.[p]).map(part => resultButton(attempt, part)).join('')}</div>`).join('')}</div></details>` : ''}`;
     this.showModal('testDetailModal');
@@ -256,11 +273,7 @@ Object.assign(App, {
     const content = test.grammarContent;
     const text = (value, key) => this.renderGrammarText(value, key, answers, result);
     return `<article class="grammar-paper glass-card rounded-2xl p-5 sm:p-8">
-        <h1>${this.escapeHtml(content.title)}</h1>
-        <div class="grammar-definition"><strong>#가정법</strong><p>${text(content.definition, 'definition')}</p></div>
-        <h2>#가정법의 종류</h2>
-        ${content.sections.map((s, i) => `<section class="grammar-section"><h3>${this.escapeHtml(s.title)}</h3><p class="grammar-muted">${text(s.description, `s${i}_description`)}</p>${s.formula ? `<p>${text(s.formula, `s${i}_formula`)}</p>` : ''}<p class="grammar-example">${text(s.example, `s${i}_example`)}</p><p class="grammar-muted">${this.escapeHtml(s.translation)}</p></section>`).join('')}
-        <section class="grammar-section"><h3>④ 기타 필수 가정법 표현</h3><div class="overflow-x-auto"><table class="grammar-table"><tbody>${content.expressions.map((row, i) => `<tr>${i === 0 || row.group !== content.expressions[i - 1].group ? `<th scope="rowgroup" rowspan="${content.expressions.filter(r => r.group === row.group).length}">${this.escapeHtml(row.group)}</th>` : ''}<td>${text(row.formula, `e${i}_formula`)}</td><td>${text(row.example, `e${i}_example`)}</td></tr>`).join('')}</tbody></table></div></section>
+        ${GrammarPaper.render(content, text)}
         ${!result ? `        <div class="mt-5">${this.grammarButton(test.grammarParts.includes('practice') ? '실전으로 넘어가기' : '제출', 'App.submitGrammarConcept()')}</div>` : ''}
       </article>`;
   },

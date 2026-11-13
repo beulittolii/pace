@@ -1,4 +1,4 @@
-/** 가정법 원문과 출제 데이터. 배정 시 복사하여 출제 당시 버전을 보존한다. */
+/** 문법 학습·시험 공통 원문. {{정답}}만 시험에서 빈칸으로 바꾼다. */
 const GRAMMAR_UNIT = {
   id: 'subjunctive', version: 1, title: '가정법', cutoff: 80,
   // {{정답}} 부분만 입력칸으로 바꾸며 나머지 원문은 그대로 표시한다.
@@ -32,6 +32,70 @@ const GRAMMAR_UNIT = {
     { id: 'g9', type: 'CHOICE', question: '괄호 안의 상황을 고려하여 (A), (B)에 들어갈 말을 바르게 짝지은 것은?', passage: 'Tom talks as if he (A) _____ the answer. (In fact, he does not know it.)\nYesterday, Amy looked as though she (B) _____ a ghost. (She had not actually seen one.)', choices: ['knows — saw', 'had known — sees', 'knows — had seen', 'knew — sees', 'knew — had seen'], answer: 5, explanation: '현재 안다는 듯 말하는 것은 as if + 과거동사 knew, 과거에 이미 유령을 본 듯 보였다는 것은 as though + had p.p.인 had seen을 쓴다.' },
     { id: 'g10', type: 'CHOICE', question: '다음 대화의 빈칸에 들어갈 말로 알맞은 것은?', passage: 'A: It is almost midnight, and you have school tomorrow.\nB: You are right. It is time I _____ to bed.', choices: ['went', 'go', 'will go', 'have gone', 'had gone'], answer: 1, explanation: 'It is time + 주어 + 과거동사는 이제 ~할 때라는 뜻이다. 현재 자야 할 때임을 나타내지만 went를 쓴다.' }
   ]
+};
+
+const GRAMMAR_UNITS = {
+  subjunctive: GRAMMAR_UNIT,
+  'relative-pronouns': {
+    id: 'relative-pronouns', version: 1, title: '관계대명사', cutoff: 80,
+    studyPdf: '관계대명사_개념학습.pdf',
+    definitionHeading: '#관계대명사', sectionsHeading: '#관계대명사의 핵심 개념', expressionsHeading: '⑧ 문장 적용 체크',
+    definition: '두 문장을 연결하는 {{접속사}}와 명사를 대신하는 {{대명사}}의 역할을 함께 한다. 관계대명사가 이끄는 절은 앞의 명사인 {{선행사}}를 수식하며, 관계대명사는 그 절 안에서 {{주어}}, {{목적어}}, 소유를 나타내는 말의 역할을 한다.',
+    sections: [
+      { id: 'subject', title: '① 주격 관계대명사: who / which',
+        description: '관계사절에서 {{주어}} 역할을 한다. 선행사가 사람이면 {{who}}, 사물·동물이면 {{which}}를 쓴다. 제한적 용법에서는 that도 가능하다.',
+        formula: '선행사 + 주격 관계대명사 + {{동사}} ~ (관계대명사 뒤에 주어를 중복해서 쓰지 않는다.)',
+        example: '예) I know a girl {{who}} speaks French. / This is a robot {{which}} cleans the floor.',
+        translation: '나는 프랑스어를 하는 소녀를 안다. / 이것은 바닥을 청소하는 로봇이다.' },
+      { id: 'object', title: '② 목적격 관계대명사와 생략',
+        description: '관계사절에서 {{목적어}} 역할을 한다. 사람은 who / whom / that, 사물·동물은 which / that을 쓴다. 제한적 용법의 목적격은 {{생략}}할 수 있다. 단, 전치사 바로 뒤에서는 생략하지 않는다.',
+        formula: '선행사 + (목적격 관계대명사) + {{주어}} + 동사 ~ / 주격·소유격 관계대명사만 단독으로 생략하는 것은 불가',
+        example: '예) The book ({{which}}) you lent me was interesting.',
+        translation: '네가 나에게 빌려준 책은 재미있었다. → you lent me 뒤에서 목적어 the book이 빠진 구조' },
+      { id: 'possessive', title: '③ 소유격 관계대명사: whose',
+        description: '관계사절에서 소유 관계를 나타내며, 선행사가 사람 또는 사물일 때 모두 {{whose}}를 쓸 수 있다. whose 바로 뒤에는 {{명사}}가 온다.',
+        formula: '선행사 + {{whose + 명사}} + 나머지 말 ~',
+        example: '예) I met a boy {{whose}} mother is a pilot.',
+        translation: '나는 어머니가 조종사인 소년을 만났다. → whose mother = the boy’s mother' },
+      { id: 'that', title: '④ 관계대명사 that과 사용 제한',
+        description: 'that은 사람·사물의 주격·목적격에 쓴다. 선행사가 {{사람과 사물}}을 함께 가리킬 때, all / everything 등일 때, 최상급·서수의 수식을 받을 때 주로 that을 쓴다.',
+        formula: '{{전치사 바로 뒤}}와 {{쉼표 뒤}}에는 관계대명사 that을 쓰지 않는다. that에는 소유격 형태가 없다.',
+        example: '예) Look at the boy and the dog {{that}} are running together.',
+        translation: '함께 달리고 있는 소년과 개를 봐라. → 사람과 동물을 함께 가리키는 선행사' },
+      { id: 'preposition', title: '⑤ 전치사 + 관계대명사',
+        description: '전치사 바로 뒤에는 사람이면 {{whom}}, 사물이면 {{which}}를 쓴다. 이때 관계대명사는 {{생략할 수 없다}}.',
+        formula: '전치사 + whom / which + 주어 + 동사 ~ / 전치사를 절 끝에 두면 제한적 용법의 목적격 관계대명사는 생략 가능',
+        example: '예) This is the house in {{which}} she lives. (= This is the house (which / that) she lives in.)',
+        translation: '이것은 그녀가 사는 집이다. → in which는 가능하지만 in that은 불가' },
+      { id: 'continuing', title: '⑥ 계속적 용법: 쉼표 뒤의 추가 설명',
+        description: '선행사를 한정하는 제한적 용법과 달리, {{쉼표}} 뒤에서 선행사에 대한 정보를 덧붙인다. who / whom / which / whose를 쓰며, {{that}}은 쓰지 않고 관계대명사를 생략하지 않는다.',
+        formula: '선행사 + , + 관계대명사 ~ / which는 앞 문장 {{전체}}를 받을 수도 있다.',
+        example: '예) Mina missed the bus, {{which}} made her late.',
+        translation: '미나는 버스를 놓쳤고, 그 일 때문에 늦었다. → which = 미나가 버스를 놓친 일 전체' },
+      { id: 'what', title: '⑦ 선행사를 포함하는 관계대명사 what',
+        description: 'what은 {{선행사}}를 포함하며, {{the thing(s) which / that}}의 뜻이다. 앞에 별도의 선행사를 쓰지 않고, what절은 문장에서 주어·목적어·보어 역할을 한다.',
+        formula: 'what + 불완전한 절 (절 안에 {{주어 또는 목적어}}가 빠져 있다.) / 선행사 + what은 불가',
+        example: '예) {{What}} he said was true. (= The thing that he said was true.)',
+        translation: '그가 말한 것은 사실이었다. → what절 전체가 주어이며, he said의 목적어가 빠져 있다.' }
+    ],
+    expressions: [
+      { group: '문장 합치기', formula: '두 문장에서 {{같은 명사}}를 찾아 뒤 문장의 역할에 맞는 관계대명사로 바꾼다.', example: 'I have a friend. He lives in Busan. → I have a friend {{who}} lives in Busan.' },
+      { group: '중복 금지', formula: '관계대명사가 대신한 {{주어·목적어}}를 절 안에 다시 쓰지 않는다.', example: 'This is the book which I bought. (O) / This is the book which I bought {{it}}. (X)' },
+      { group: '수 일치', formula: '주격 관계대명사 뒤 동사의 수는 {{선행사}}에 맞춘다.', example: 'a student who {{studies}} hard / students who {{study}} hard' }
+    ],
+    questions: [
+      { id: 'rp1', sectionId: 'subject', type: 'CHOICE', question: '빈칸에 들어갈 말로 가장 적절한 것은?', passage: 'The woman _____ teaches us science is very kind.', choices: ['which', 'whose', 'who', 'whom', 'what'], answer: 3, explanation: '선행사 The woman은 사람이고 관계사절에서 teaches의 주어가 빠져 있으므로 주격 who가 알맞다. whom은 목적격, whose는 소유격이다.' },
+      { id: 'rp2', sectionId: 'subject', type: 'CHOICE', question: '빈칸에 들어갈 말로 가장 적절한 것은?', passage: 'I bought a camera _____ takes clear pictures.', choices: ['which', 'who', 'whom', 'whose', 'what'], answer: 1, explanation: '선행사 a camera는 사물이고 takes의 주어가 필요하므로 주격 which를 쓴다. what 앞에는 별도의 선행사를 쓰지 않는다.' },
+      { id: 'rp3', sectionId: 'object', type: 'CHOICE', question: '관계대명사를 생략한 문장 중 어법상 옳은 것은?', passage: '', choices: ['I know a boy lives next door.', 'The girl mother is a doctor is my friend.', 'This is the book I bought it yesterday.', 'The teacher to I spoke was kind.', 'The movie we watched yesterday was exciting.'], answer: 5, explanation: '⑤는 목적격 관계대명사 which / that을 생략한 문장이다. ①은 주격 who / that, ②는 소유격 whose, ④는 전치사 뒤 whom이 필요하여 단독 생략할 수 없다. ③은 목적어 it을 중복해서 썼다.' },
+      { id: 'rp4', sectionId: 'possessive', type: 'CHOICE', question: '빈칸에 들어갈 말로 가장 적절한 것은?', passage: 'I have a friend _____ father works at this hospital.', choices: ['who', 'which', 'whom', 'whose', 'what'], answer: 4, explanation: '친구의 아버지라는 소유 관계를 나타내며 빈칸 뒤에 명사 father가 있으므로 whose가 알맞다. whose father는 the friend’s father를 대신한다.' },
+      { id: 'rp5', sectionId: 'that', type: 'CHOICE', question: '사람과 사물을 함께 가리키는 선행사를 고려하여 빈칸에 가장 적절한 말을 고르시오.', passage: 'The people and the cars _____ filled the street made it hard to walk.', choices: ['who', 'that', 'whom', 'whose', 'what'], answer: 2, explanation: '선행사가 사람(the people)과 사물(the cars)을 함께 가리키므로 관계대명사 that을 쓴다. 관계사절에서 filled의 주어 역할을 한다.' },
+      { id: 'rp6', sectionId: 'continuing', type: 'CHOICE', question: '앞 문장 전체를 받아 추가 설명하도록 빈칸에 들어갈 말을 고르시오.', passage: 'Jisu won first prize, _____ surprised everyone.', choices: ['that', 'what', 'whose', 'which', 'whom'], answer: 4, explanation: '쉼표 뒤의 which가 지수가 1등상을 받았다는 앞 문장 전체를 받아 추가 설명한다. 계속적 용법에는 that을 쓰지 않으며 관계대명사를 생략하지 않는다.' },
+      { id: 'rp7', sectionId: 'preposition', type: 'CHOICE', question: '전치사 바로 뒤에 쓰일 말로 가장 적절한 것은?', passage: 'The scientist with _____ I worked won an award.', choices: ['whose', 'that', 'which', 'what', 'whom'], answer: 5, explanation: '선행사 The scientist는 사람이다. 전치사 with 바로 뒤에는 목적격 whom을 쓰며, that을 쓰거나 관계대명사를 생략할 수 없다.' },
+      { id: 'rp8', sectionId: 'preposition', type: 'CHOICE', question: '두 문장의 뜻이 같아지도록 빈칸에 들어갈 말을 고르시오.', passage: 'This is the chair (which) I sat on.\n= This is the chair on _____ I sat.', choices: ['whom', 'which', 'that', 'whose', 'what'], answer: 2, explanation: '선행사 the chair는 사물이므로 전치사 on 바로 뒤에 which를 쓴다. 전치사가 절 끝에 있을 때는 목적격 관계대명사를 생략할 수 있지만, 전치사 바로 뒤에서는 생략할 수 없다.' },
+      { id: 'rp9', sectionId: 'what', type: 'CHOICE', question: '‘그가 말한 것은 사실이었다.’라는 뜻이 되도록 빈칸에 들어갈 말을 고르시오.', passage: '_____ he said was true.', choices: ['Which', 'Who', 'What', 'Whose', 'Whom'], answer: 3, explanation: '별도의 선행사 없이 ‘~한 것’을 나타내므로 선행사를 포함하는 What을 쓴다. What he said 전체가 주어이며 he said에는 목적어가 빠져 있다. What = the thing which / that이다.' },
+      { id: 'rp10', sectionId: 'checks', type: 'CHOICE', question: '(A), (B)에 들어갈 말을 바르게 짝지은 것은?', passage: 'The student who (A) _____ hard is my brother.\nThe students who (B) _____ hard are in the library.', choices: ['studies — study', 'study — studies', 'studies — studies', 'study — study', 'studying — studying'], answer: 1, explanation: '주격 관계대명사 뒤 동사의 수는 선행사에 맞춘다. (A)의 선행사 The student는 단수이므로 studies, (B)의 선행사 The students는 복수이므로 study가 알맞다.' }
+    ]
+  }
 };
 
 const GrammarLogic = {

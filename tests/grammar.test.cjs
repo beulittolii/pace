@@ -231,3 +231,171 @@ test('calendar and admin status turn green after retest while historical scores 
   assert.match(run('App.getTestBadgeStyle(root).class'), /bg-rose-100/);
   assert.doesNotMatch(run("App.buildCalendarCell(9,'2026-11-09',false,FirebaseStore.tests,'2026-11-11')"), /문법 테스트 · 완료/);
 });
+
+test('relative-pronoun concept fields have stable blanks and ten teachable five-choice questions', () => {
+  const f = fixture();
+  assert.equal(f.run("typeof GRAMMAR_UNITS"), 'object', 'multiple grammar units must be available');
+  const unit = f.plain("GRAMMAR_UNITS['relative-pronouns']");
+  const blanks = f.plain("GrammarLogic.blanks(GRAMMAR_UNITS['relative-pronouns'])");
+  assert.ok(blanks.length >= 25);
+  assert.equal(new Set(blanks.map(b => b.id)).size, blanks.length);
+  assert.equal(f.run("GrammarLogic.missing(GRAMMAR_UNITS['relative-pronouns'], {})"), blanks.length);
+  assert.equal(unit.questions.length, 10);
+  assert.equal(new Set(unit.questions.map(q => q.id)).size, 10);
+  assert.ok(unit.questions.every(q => q.choices.length === 5 && new Set(q.choices).size === 5 && Number.isInteger(q.answer) && q.answer >= 1 && q.answer <= 5 && q.explanation));
+  assert.ok(unit.questions.every(q => unit.sections.some(section => section.id === q.sectionId) || q.sectionId === 'checks'));
+  for (const count of [7, 8, 10]) {
+    const result = f.plain(`GrammarLogic.gradePractice(GRAMMAR_UNITS['relative-pronouns'], Object.fromEntries(GRAMMAR_UNITS['relative-pronouns'].questions.map((q, i) => [i, i < ${count} ? q.answer : q.answer % 5 + 1])))`);
+    assert.equal(result.score, count * 10);
+    assert.equal(result.passed, count >= 8);
+  }
+  assert.equal(f.plain("GrammarLogic.gradeConcept(GRAMMAR_UNITS['relative-pronouns'], Object.fromEntries(GrammarLogic.blanks(GRAMMAR_UNITS['relative-pronouns']).map(b => [b.id, b.answer])), {})").score, 100);
+});
+
+function paperFixture() {
+  const f = fixture();
+  const file = path.join(__dirname, '..', 'grammar_paper.js');
+  assert.ok(fs.existsSync(file), 'a shared study/exam renderer is required');
+  vm.runInContext(fs.readFileSync(file, 'utf8'), f.context);
+  return f;
+}
+
+test('study paper and exam paper retain exactly the same text and field order except blank replacements', () => {
+  const f = paperFixture();
+  const study = f.run("GrammarPaper.render(GRAMMAR_UNITS['relative-pronouns'], text => GrammarPaper.studyText(text))");
+  const restored = f.run(`GrammarPaper.render(GRAMMAR_UNITS['relative-pronouns'], (text, key) => {
+    let index = 0;
+    return GrammarPaper.escape(text).replace(/\\{\\{(.*?)\\}\\}/g, (_, answer) => '<input data-key="' + key + '_' + index++ + '" data-answer="' + answer + '">');
+  })`);
+  assert.equal(restored.replace(/<input[^>]*data-answer="([^"]*)">/g, '$1'), study);
+  assert.doesNotMatch(study, /\{\{|<input|<button|가정법/);
+  assert.match(study, /관계대명사/);
+  assert.ok(study.indexOf('주격') < study.indexOf('소유격'));
+  assert.ok(study.indexOf('소유격') < study.indexOf('계속적'));
+  assert.equal(f.run(`GrammarPaper.studyText('A < B & {{"who"}}')`), 'A &lt; B &amp; &quot;who&quot;');
+});
+
+test('legacy subjunctive snapshots still render their headings and original blank keys', () => {
+  const f = paperFixture();
+  const study = f.run('GrammarPaper.render(GRAMMAR_UNIT, text => GrammarPaper.studyText(text))');
+  assert.match(study, /#가정법의 종류/);
+  assert.match(study, /④ 기타 필수 가정법 표현/);
+  assert.match(study, /If I had wings, I would fly to you\./);
+  f.run('const renderedKeys = []; GrammarPaper.render(GRAMMAR_UNIT, (text, key) => { renderedKeys.push(key); return text; });');
+  const keys = new Set(f.plain('renderedKeys'));
+  for (const blank of f.plain('GrammarLogic.blanks(GRAMMAR_UNIT)')) assert.ok(keys.has(blank.id.replace(/_\d+$/, '')));
+});
+
+test('grammar units assign independently, reject unknown units and retain retest snapshots', async () => {
+  const f = fixture();
+  await assert.rejects(f.run(`AppData.assignGrammarTest({ ...${assignment}, unitId: 'unknown' })`), /단원/);
+  assert.equal(f.documents.size, 0);
+  const subjunctive = await f.run(`AppData.assignGrammarTest(${assignment})`);
+  const relative = await f.run(`AppData.assignGrammarTest({ ...${assignment}, unitId: 'relative-pronouns' })`);
+  assert.equal(subjunctive.grammarUnitId, 'subjunctive');
+  assert.equal(relative.grammarUnitId, 'relative-pronouns');
+  assert.notEqual(subjunctive.id, relative.id);
+  assert.equal(relative.grammarSequence, 0);
+  assert.match(relative.title, /관계대명사/);
+  f.context.relativeId = relative.id;
+  await f.run("AppData.updateGrammarTest(relativeId, t => { t.grammarResults.concept = { score: 60, passed: false }; t.grammarStage = 'done'; })");
+  f.run("GRAMMAR_UNITS['relative-pronouns'].version = 2; GRAMMAR_UNITS['relative-pronouns'].definition = '변경된 새 원문';");
+  const retest = await f.run(`AppData.assignGrammarTest({ ...${assignment}, unitId: 'relative-pronouns', parts: ['concept'] })`);
+  assert.equal(retest.grammarRootId, relative.id);
+  assert.equal(retest.grammarVersion, 1);
+  assert.deepEqual(retest.grammarContent, relative.grammarContent);
+  assert.deepEqual(f.plain("GrammarLogic.eligible(AppData.getTests(), 1, 'subjunctive')"), []);
+  assert.equal(f.documents.get(`tests/${subjunctive.id}`).grammarLastSequence, 0);
+});
+
+function assignmentFormFixture() {
+  const f = paperFixture();
+  // Only DOM and cloud boundaries are substituted; assignment, eligibility and persistence run unchanged.
+  const elements = new Map();
+  f.context.document = {
+    getElementById(id) {
+      if (!elements.has(id)) elements.set(id, { value: '', innerHTML: '', disabled: false });
+      return elements.get(id);
+    },
+    querySelector() { return { disabled: false }; },
+    querySelectorAll() { return [{ value: 'concept' }, { value: 'practice' }]; },
+    addEventListener() {}
+  };
+  f.run(`window.addEventListener = () => {};
+    App.state.adminSelectedStudentId = 1;
+    AppData.getStudents = () => [{id: 1, name: '테스트 학생'}];
+    AppData.getStudentById = () => ({id: 1, name: '테스트 학생'});
+    Object.assign(App, { escapeHtml: value => GrammarPaper.escape(value), closeAllModals() {}, showModal() {}, hideModal() {}, closeAdminTestFormModal() {}, renderAdminTestsTab() {}, toast() {}, getTodayDateString: () => '2026-11-13', getTestTimeStatus: () => ({canStart:true}) });`);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'grammar.js'), 'utf8'), f.context);
+  return { ...f, element: id => f.context.document.getElementById(id) };
+}
+
+test('both assignment forms save the selected unit and isolate eligibility, while editing keeps the snapshot', async () => {
+  const f = assignmentFormFixture();
+  f.run('App.initUnifiedGrammarForm()');
+  f.element('formGrammarUnit').value = 'relative-pronouns';
+  f.element('formDate').value = '2026-11-13';
+  f.element('formTeacherNote').value = '';
+  f.run('App.renderGrammarAssignmentParts(true)');
+  assert.match(f.element('formGrammarParts').innerHTML, /관계대명사/);
+  await f.run('App.saveUnifiedGrammarAssignment({})');
+  const relative = f.plain('AppData.getTests()[0]');
+  assert.equal(relative.grammarUnitId, 'relative-pronouns');
+  f.run('App.openGrammarAssignmentModal(null, 1)');
+  f.element('grammarAssignmentUnit').value = 'subjunctive';
+  f.run('App.renderGrammarAssignmentParts()');
+  assert.match(f.element('grammarAssignmentParts').innerHTML, /최초 시험/);
+  await f.run('App.saveGrammarAssignment({ preventDefault() {} })');
+  assert.equal(f.run('AppData.getTests().length'), 2);
+  assert.equal(f.run('AppData.getTests()[1].grammarUnitId'), 'subjunctive');
+  f.context.relativeId = relative.id;
+  f.run('App.openGrammarAssignmentModal(relativeId)');
+  assert.equal(f.element('grammarAssignmentUnit').disabled, true);
+  assert.equal(f.element('grammarAssignmentUnit').value, 'relative-pronouns');
+  f.element('grammarAssignmentUnit').value = 'subjunctive';
+  f.element('grammarAssignmentDate').value = '2026-11-14';
+  await f.run('App.saveGrammarAssignment({ preventDefault() {} })');
+  const edited = f.documents.get(`tests/${relative.id}`);
+  assert.equal(edited.date, '2026-11-14');
+  assert.equal(edited.grammarUnitId, 'relative-pronouns');
+  assert.deepEqual(edited.grammarContent, relative.grammarContent);
+});
+
+test('retest action opens the original unit instead of falling back to subjunctive', async () => {
+  const f = assignmentFormFixture();
+  const relative = await f.run(`AppData.assignGrammarTest({ ...${assignment}, unitId: 'relative-pronouns' })`);
+  f.context.relativeId = relative.id;
+  f.run('App.openGrammarTestModal(relativeId)');
+  const action = f.element('detailModalBody').innerHTML.match(/onclick="([^"]+)"[^>]*>[^<]*<i[^>]*><\/i>문법 재시험 배정/);
+  assert.ok(action, 'the detail screen exposes a retest action');
+  f.run(action[1]);
+  assert.equal(f.element('grammarAssignmentUnit').value, 'relative-pronouns');
+});
+
+test('PDF generator uses the actual exam body with only its blanks restored', () => {
+  const generator = path.join(__dirname, '..', 'scripts', 'build-grammar-study.cjs');
+  assert.ok(fs.existsSync(generator), 'a reproducible study PDF generator is required');
+  const html = require('node:child_process').execFileSync(process.execPath, [generator, '--html'], { encoding: 'utf8' });
+  const f = assignmentFormFixture();
+  f.run(`const unit = GRAMMAR_UNITS['relative-pronouns'];
+    const exam = {grammarContent: unit, grammarParts: ['concept', 'practice']};
+    const answers = Object.fromEntries(GrammarLogic.blanks(unit).map(b => [b.id, b.answer]));
+    App.state.grammarTest = {test: exam};`);
+  const exam = f.run('App.renderGrammarConceptPaper(exam, answers)');
+  const restored = exam.replace(/<input[^>]*\bvalue="([^"]*)"[^>]*>/g, '$1');
+  const body = restored.slice(restored.indexOf('<h1>'), restored.lastIndexOf('</section>') + '</section>'.length);
+  const study = html.match(/<article[^>]*>([\s\S]*?)<\/article>/)[1].trim();
+  assert.equal(study, body);
+  assert.doesNotMatch(html, /\{\{|<input|<button|<script|https?:\/\//);
+  assert.match(html, /lang="ko"/);
+});
+
+test('study PDF is downloadable from assignment and student detail before the exam', async () => {
+  const f = assignmentFormFixture();
+  f.run("App.openGrammarAssignmentModal(null, 1, 'relative-pronouns')");
+  assert.match(f.element('grammarAssignmentParts').innerHTML, /<a[^>]+href="관계대명사_개념학습.pdf"[^>]+download/);
+  const relative = await f.run(`AppData.assignGrammarTest({ ...${assignment}, unitId: 'relative-pronouns' })`);
+  f.context.relativeId = relative.id;
+  f.run('App.state.isAdminLoggedIn = false; App.state.isStudentLoggedIn = true; App.state.selectedStudentId = 1; App.openGrammarTestModal(relativeId)');
+  assert.match(f.element('detailModalBody').innerHTML, /<a[^>]+href="관계대명사_개념학습.pdf"[^>]+download/);
+});

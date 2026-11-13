@@ -9,7 +9,7 @@ const root = path.resolve(__dirname, '..');
 const errors = [];
 let browser;
 const server = http.createServer((req, res) => {
-  const pathname = new URL(req.url, 'http://localhost').pathname;
+  const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
   if (pathname === '/') {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -17,11 +17,14 @@ const server = http.createServer((req, res) => {
   } else if (['/style.css', '/pace.css'].includes(pathname)) {
     res.setHeader('Content-Type', 'text/css');
     res.end(fs.readFileSync(path.join(root, pathname.slice(1))));
+  } else if (pathname === '/관계대명사_개념학습.pdf') {
+    res.setHeader('Content-Type', 'application/pdf');
+    res.end(fs.readFileSync(path.join(root, pathname.slice(1))));
   } else { res.statusCode = 404; res.end(); }
 });
 
 async function loadApp(page) {
-  for (const file of ['weekly_review_logic.js', 'grammar_data.js', 'data.js', 'grammar_store.js', 'weekly_review_store.js', 'app.js', 'grammar.js', 'weekly_review.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
+  for (const file of ['weekly_review_logic.js', 'grammar_data.js', 'grammar_paper.js', 'data.js', 'grammar_store.js', 'weekly_review_store.js', 'app.js', 'grammar.js', 'weekly_review.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
   await page.evaluate(() => {
     document.getElementById('initialLoadingSkeleton')?.remove();
     window.testDocuments = new Map(JSON.parse(localStorage.getItem('test_documents') || '[]'));
@@ -324,6 +327,72 @@ async function loadApp(page) {
   assert.equal(await page.locator('[data-grammar-score-part="concept"] .grammar-completion-verdict').innerText(), 'FAIL');
   assert.equal((await page.locator('[data-grammar-score-part="concept"] .grammar-completion-score').innerText()).replace(/\s/g, ''), '0점');
   assert.equal(await page.locator('[data-grammar-score-part="concept"]').evaluate(el => el.classList.contains('is-fail')), true);
+  // Relation-pronoun unit: real controls and in-memory persistence, no production writes.
+  const artifacts = path.join(root, '.superpowers', 'sdd', '2026-11-13-relative-pronouns');
+  fs.mkdirSync(artifacts, { recursive: true });
+  await page.evaluate(async () => {
+    App.state.isAdminLoggedIn = true; App.state.isStudentLoggedIn = false;
+    await App.showAdminDashboard(); App.openAddTestModal();
+  });
+  await page.locator('[name="formTestType"][value="GRAMMAR"]').check();
+  assert.deepEqual(await page.locator('#formGrammarUnit option').allTextContents(), ['가정법', '관계대명사']);
+  await page.locator('#formGrammarUnit').selectOption('relative-pronouns');
+  assert.equal(await page.locator('[name="formGrammarPart"]:checked:disabled').count(), 2);
+  await page.screenshot({ path: path.join(artifacts, 'relative-assignment.png'), fullPage: true });
+  await page.locator('#adminTestFormModal button[type="submit"]').click();
+  await page.waitForFunction(() => FirebaseStore.tests.some(t => t.grammarUnitId === 'relative-pronouns'));
+  const relativeId = await page.evaluate(() => FirebaseStore.tests.find(t => t.grammarUnitId === 'relative-pronouns').id);
+  await page.evaluate(async id => {
+    App.state.isAdminLoggedIn = false; App.state.isStudentLoggedIn = true;
+    await App.selectStudent(501); App.openGrammarTestModal(id);
+  }, relativeId);
+  const downloadEvent = page.waitForEvent('download');
+  await page.locator('#detailModalBody a[download]').click();
+  const download = await downloadEvent;
+  assert.equal(download.suggestedFilename(), '관계대명사_개념학습.pdf');
+  assert.equal(await download.failure(), null);
+  await page.getByRole('button', { name: '테스트 응시', exact: true }).click();
+  await page.waitForSelector('#grammarTestContent .grammar-blank');
+  const relativeBlanks = await page.evaluate(() => GrammarLogic.blanks(GRAMMAR_UNITS['relative-pronouns']).length);
+  assert.equal(await page.locator('#grammarTestContent .grammar-blank').count(), relativeBlanks);
+  assert.equal(await page.locator('#grammarTestContent h1').innerText(), '관계대명사');
+  assert.equal(await page.locator('#grammarTestContent').innerText().then(text => text.includes('가정법')), false);
+  await page.screenshot({ path: path.join(artifacts, 'relative-concept-desktop.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.screenshot({ path: path.join(artifacts, 'relative-concept-mobile.png'), fullPage: true });
+  await page.evaluate(() => {
+    const answers = Object.fromEntries(GrammarLogic.blanks(App.state.grammarTest.test.grammarContent).map(b => [b.id, b.answer]));
+    for (const input of document.querySelectorAll('[data-grammar-blank]')) {
+      input.value = answers[input.dataset.grammarBlank]; input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  });
+  await page.getByRole('button', { name: '실전으로 넘어가기', exact: true }).click();
+  await page.waitForFunction(() => App.state.grammarTest.test.grammarStage === 'practice');
+  for (let index = 0; index < 10; index++) {
+    await page.evaluate(i => App.renderGrammarPractice(i), index);
+    const answer = await page.evaluate(i => App.state.grammarTest.test.grammarContent.questions[i].answer, index);
+    await page.locator(`#grammarTestContent button[onclick="App.selectPracticeChoice(${answer})"]`).click();
+  }
+  await page.screenshot({ path: path.join(artifacts, 'relative-practice-mobile.png'), fullPage: true });
+  await page.getByRole('button', { name: /답안 최종 제출하기/ }).click();
+  await page.waitForSelector('#grammarCompletionView:not(.hidden)');
+  assert.match(await page.locator('[data-grammar-score-part="practice"]').innerText(), /100/);
+  await page.evaluate(id => {
+    App.state.isAdminLoggedIn = true; App.state.isStudentLoggedIn = false;
+    App.openGrammarGrading(id);
+  }, relativeId);
+  assert.equal(await page.locator('#grammarGradingSave').isDisabled(), false);
+  await page.locator('#grammarGradingSave').click();
+  await page.waitForFunction(id => App.grammarTestById(id).grammarResults.concept.score === 100, relativeId);
+  await page.evaluate(async id => {
+    await AppData.updateGrammarTest(id, t => { t.grammarResults.concept.passed = false; t.grammarResults.concept.score = 60; });
+    App.openGrammarTestModal(id);
+  }, relativeId);
+  await page.getByRole('button', { name: '문법 재시험 배정', exact: true }).click();
+  assert.equal(await page.locator('#grammarAssignmentUnit').inputValue(), 'relative-pronouns');
+  assert.equal(await page.locator('[name="grammarPart"][value="concept"]').isEnabled(), true);
+  assert.equal(await page.locator('[name="grammarPart"][value="practice"]').isEnabled(), false);
   assert.deepEqual(errors, []);
-  console.log(`Browser checks passed: ${totalBlanks} blanks, missing-answer confirmation/cancel, failed-submit retry, navigation/refresh guards, no draft saves, unanswered-submit confirmation and unified progress, 80-point pass, manual grading, failed-area-only retest, mobile layout.`);
+  console.log(`Browser checks passed: ${totalBlanks} subjunctive / ${relativeBlanks} relative-pronoun blanks, unit selection, PDF download, ten practice questions, 100-point results, manual grading, isolated retests, mobile layout, and existing navigation/submission regressions.`);
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => { await browser?.close(); server.close(); });

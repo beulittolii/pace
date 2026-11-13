@@ -55,13 +55,15 @@ Object.assign(AppData, {
     else { setLocalCache(LOCAL_CACHE_KEYS.tests, FirebaseStore.tests); this.refreshCloudScreens(); }
   },
 
-  async assignGrammarTest({ studentId, date, time, endTime, parts, note }) {
+  async assignGrammarTest({ studentId, date, time, endTime, parts, note, unitId = 'subjunctive' }) {
     if (!this.isFirebaseReady()) throw new Error('클라우드 연결 후 다시 배정해주세요.');
     if (!App.state.isAdminLoggedIn) throw new Error('관리자만 배정할 수 있습니다.');
     if (!shouldKeepTest({ date })) throw new Error('등록 가능한 날짜를 선택해주세요.');
+    if (!Object.hasOwn(GRAMMAR_UNITS, unitId)) throw new Error('배정할 문법 단원을 확인해주세요.');
+    const unit = GRAMMAR_UNITS[unitId];
     if (!parts.length || parts.some(p => !GrammarLogic.parts.includes(p))) throw new Error('배정할 영역을 선택해주세요.');
     const { doc, runTransaction } = window.firebaseFns;
-    const rootId = `grammar_${GRAMMAR_UNIT.id}_student_${Number(studentId)}`;
+    const rootId = `grammar_${unit.id}_student_${Number(studentId)}`;
     const rootRef = doc(window.firebaseDB, 'tests', rootId);
     const nextId = `grammar_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
     const records = await runTransaction(window.firebaseDB, async transaction => {
@@ -79,11 +81,11 @@ Object.assign(AppData, {
       const id = root ? nextId : rootId;
       const sequence = root ? (root.grammarLastSequence || 0) + 1 : 0;
       const test = {
-        id, studentId: Number(studentId), type: 'GRAMMAR', title: `가정법 문법 테스트${root ? ' · 재시험' : ''}`,
+        id, studentId: Number(studentId), type: 'GRAMMAR', title: `${root?.grammarContent?.title || unit.title} 문법 테스트${root ? ' · 재시험' : ''}`,
         date, time, endTime, scope: parts.map(p => GrammarLogic.label(p)).join(' + '), cutoff: '개념·실전 각각 80점 이상', cutoffScore: 80,
         status: 'SCHEDULED', score: '', retestStatus: 'NONE', retestDate: '', teacherNote: note || '',
-        grammarUnitId: GRAMMAR_UNIT.id, grammarVersion: root?.grammarVersion || GRAMMAR_UNIT.version,
-        grammarContent: GrammarLogic.clone(root?.grammarContent || GRAMMAR_UNIT),
+        grammarUnitId: unit.id, grammarVersion: root?.grammarVersion || unit.version,
+        grammarContent: GrammarLogic.clone(root?.grammarContent || unit),
         grammarRootId: rootId, grammarSequence: sequence, grammarParts: [...parts],
         grammarStage: parts.includes('concept') ? 'concept' : 'practice', grammarResults: {},
         grammarCreatedAt: new Date().toISOString()
