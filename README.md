@@ -51,6 +51,9 @@
 
 ### 4. 문법 테스트
 
+- 문법·주간 복습 첫 시작 때 `기존` / `모션 디자인`을 선택합니다. 계정에 공통으로 저장하며 `프로필 설정 → 시험 모드`에서 변경할 수 있습니다. 변경은 다음 응시부터 적용합니다. 기존 모드는 원래 화면·한 문항씩 푸는 실전 흐름을 유지합니다.
+- 모션 디자인은 출력된 종이에서 응시하며, 문법 실전 10문항을 한 페이지에서 풀고 일괄 제출합니다. 동작 줄이기 설정에서는 출력 연출 없이 전환합니다. 관계대명사 개념 원문과 공부용 PDF는 동일하게 유지합니다.
+- 계정 설정 저장에는 최신 `firestore.rules`의 본인 `examMode` 수정 권한이 필요합니다. 사이트 코드만 배포하고 규칙을 갱신하지 않으면 최초 모드 선택 저장이 거절됩니다. 운영 규칙 배포는 별도로 진행해야 합니다.
 - 시험 관리의 `문법 테스트 추가`에서 학생과 응시 일정을 지정합니다. 가정법 최초 배정은 개념과 실전을 함께 출제합니다.
 - 개념은 원문을 옮긴 빈칸 시험지입니다. 빈칸을 남기고 넘어가면 미입력 개수를 확인하며, 실전 진입 후 개념은 수정할 수 없습니다.
 - 실전은 5지선다 10문제이며, 마지막 문항에서 제출할 수 있으며, 미응답 문항이 있으면 개수를 확인한 뒤 제출합니다. 제출 즉시 점수와 80점 통과 여부가 표시됩니다.
@@ -78,6 +81,8 @@
 주간 복습 브라우저 테스트: `node tests/weekly-review-browser.cjs` (Playwright 및 Chrome 필요, `TAILWIND_SCRIPT_PATH`로 로컬 Tailwind 스크립트 지정 가능). 실제 Firebase 대신 격리된 트랜잭션 저장소를 사용합니다.
 
 문법 로직 테스트: `node --test tests/grammar.test.cjs`
+
+시험 모드·모션 테스트: `npm test`, `npm run test:auth-rules`(Java 21 필요), `npm run test:exam-motion-browser`(Playwright/Chrome, `TAILWIND_SCRIPT_PATH`로 로컬 Tailwind 지정). 운영 Firebase 대신 격리된 테스트 저장소를 사용합니다.
 
 브라우저 테스트: Playwright가 설치된 환경에서 `node tests/grammar-browser.cjs`. 실제 Firebase에 연결하지 않는 격리된 테스트입니다. 필요하면 `NODE_PATH`와 `CHROME_PATH`로 Playwright 설치 위치와 Chrome 실행 파일을 지정할 수 있습니다.
 

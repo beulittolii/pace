@@ -91,7 +91,7 @@ function profileFixture() {
     goalSettingsMessage:{textContent:''},passwordSettingsMessage:{textContent:''},
     passwordSettingsDialog:{open:false,classList:{toggle(){}},showModal(){this.open=true;},close(){this.open=false;}},
   };
-  for (const name of ['goal','university','password']) {
+  for (const name of ['goal','university','password','examMode']) {
     fields[`${name}SettingsTab`] = {setAttribute(key,value){this[key]=value;},focus(){calls.push(['tab',name]);}};
     fields[`${name}SettingsForm`] = {hidden:false,setAttribute(){},removeAttribute(){},querySelectorAll(){return controls;},reset(){calls.push(['reset',name]);}};
   }

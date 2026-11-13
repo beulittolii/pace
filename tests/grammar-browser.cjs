@@ -24,7 +24,7 @@ const server = http.createServer((req, res) => {
 });
 
 async function loadApp(page) {
-  for (const file of ['weekly_review_logic.js', 'grammar_data.js', 'grammar_paper.js', 'data.js', 'grammar_store.js', 'weekly_review_store.js', 'app.js', 'grammar.js', 'weekly_review.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
+  for (const file of ['weekly_review_logic.js', 'grammar_data.js', 'grammar_paper.js', 'exam_mode.js', 'exam_motion.js', 'data.js', 'grammar_store.js', 'weekly_review_store.js', 'app.js', 'grammar.js', 'weekly_review.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
   await page.evaluate(() => {
     document.getElementById('initialLoadingSkeleton')?.remove();
     window.testDocuments = new Map(JSON.parse(localStorage.getItem('test_documents') || '[]'));
@@ -51,7 +51,7 @@ async function loadApp(page) {
         return result;
       }
     };
-    FirebaseStore.students = [{ id: 501, name: '문법 테스트 학생', target: '가정법 이해' }];
+    FirebaseStore.students = [{ id: 501, name: '문법 테스트 학생', target: '가정법 이해', examMode: 'classic' }];
     FirebaseStore.tests = [...testDocuments.values()];
     App.state.isAdminLoggedIn = true;
     App.state.isStudentLoggedIn = false;

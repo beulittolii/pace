@@ -308,3 +308,26 @@ body:has(#paceReportView:not(.hidden)) #studentSidebar{display:none!important;}
 @media(max-width:480px){.test-type-options{grid-template-columns:repeat(2,minmax(0,1fr));}}
 
 .test-type-options label:has(input:disabled){opacity:.45;cursor:not-allowed;}
+/* Grammar detail only: compact report rows, without ordinal labels. */
+#detailModalBody .grammar-result-list{border:1px solid #dbe2d6;border-radius:10px;overflow:hidden;background:#fff;}
+#detailModalBody .grammar-result-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:17px;padding:19px 17px;}
+#detailModalBody .grammar-result-row+.grammar-result-row{border-top:1px solid #e6eae2;}
+#detailModalBody .grammar-result-row h5{font-size:14px;font-weight:700;color:#294735;}
+#detailModalBody .grammar-result-score{min-width:75px;text-align:right;}
+#detailModalBody .grammar-result-score strong{display:block;font-size:28px;line-height:1.15;font-weight:650;letter-spacing:-1px;color:#1e4b3c;}
+#detailModalBody .grammar-result-score strong small{font-size:10px;font-weight:400;letter-spacing:0;color:#86927d;margin-left:3px;}
+#detailModalBody .grammar-result-score>span{display:block;font-size:11px;margin-top:5px;color:#85917d;}
+#detailModalBody .grammar-result-score [data-result-state=PASS]{color:#4e7e5a;}
+#detailModalBody .grammar-result-score [data-result-state=FAIL]{color:#aa5d58;}
+#detailModalBody .grammar-result-score [data-result-state=PENDING]{color:#a3834c;}
+#detailModalBody .grammar-result-action{min-width:80px;}
+#detailModalBody .grammar-result-action button{width:100%;font-size:11px;font-weight:600;padding:9px 10px;min-height:38px;border:1px solid #e2e7dc;border-radius:6px;color:#42633b;background:#f0f3eb;box-shadow:none;white-space:nowrap;}
+#detailModalBody .grammar-result-action>span{display:block;text-align:center;padding:9px 10px;font-size:11px;color:#a1ad95;}
+.grammar-study-download{display:flex;align-items:center;gap:11px;padding:15px 16px;min-height:60px;width:100%;border:1px solid #d7e0d2;border-radius:9px;background:#edf1e7;color:#315441;text-decoration:none;box-sizing:border-box;}
+.grammar-study-download>span{flex:1;min-width:0;}
+.grammar-study-download strong{display:block;font-size:12px;font-weight:700;overflow-wrap:anywhere;}
+.grammar-study-download small{display:block;font-size:10px;margin-top:4px;color:#6f8065;}
+.grammar-study-download svg{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+.grammar-study-download svg:last-child{width:16px;height:16px;}
+.grammar-study-download:hover{background:#e5eddd;}.grammar-study-download:focus-visible{outline:3px solid #91ad82;outline-offset:3px;}
+@media(max-width:480px){#detailModalBody .grammar-result-row{padding:16px 12px;gap:10px;}#detailModalBody .grammar-result-action{min-width:74px;}#detailModalBody .grammar-result-score{min-width:62px;}#detailModalBody .grammar-result-score strong{font-size:25px;}}

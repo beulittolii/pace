@@ -32,7 +32,7 @@ Object.assign(App, {
   },
   grammarStudyLink(unitId) {
     const unit = Object.hasOwn(GRAMMAR_UNITS, unitId) ? GRAMMAR_UNITS[unitId] : null;
-    return unit?.studyPdf ? `<p class="text-sm mb-3"><a href="${this.escapeHtml(unit.studyPdf)}" download class="font-bold text-violet-700 underline">${this.escapeHtml(unit.title)} 공부용 PDF 다운로드</a></p>` : '';
+    return unit?.studyPdf ? `<a href="${this.escapeHtml(unit.studyPdf)}" download class="grammar-study-download"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M12 11v7m-3-3 3 3 3-3"/></svg><span><strong>${this.escapeHtml(unit.title)} 개념 학습지</strong><small>공부용 PDF 다운로드</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4"/></svg></a>` : '';
   },
 
   initUnifiedGrammarForm() {
@@ -152,12 +152,13 @@ Object.assign(App, {
         <div class="p-3 rounded-xl bg-slate-50 border border-slate-200"><span class="text-slate-400 font-bold block mb-0.5">응시 가능 일시</span><strong class="text-slate-800 font-extrabold">${this.escapeHtml(test.date)}${timeDisplay ? ` (${this.escapeHtml(timeDisplay)})` : ''}</strong></div>
         <div class="p-3 rounded-xl bg-slate-50 border border-slate-200"><span class="text-slate-400 font-bold block mb-0.5">통과 커트라인</span><strong class="text-slate-800 font-extrabold">개념·실전 각각 80점 이상</strong></div>
       </div>
-      <div class="space-y-2"><h4 class="text-xs font-bold text-slate-700 flex items-center gap-1.5"><i aria-hidden="true" class="fa-solid fa-chart-simple text-violet-600"></i>영역별 최신 결과</h4><div class="grammar-latest-grid">
+      <div class="space-y-2"><h4 class="text-xs font-bold text-slate-700">영역별 최신 결과</h4><div class="grammar-result-list" role="list">
         ${GrammarLogic.parts.map(part => {
           const current = latest[part];
           const state = current ? GrammarLogic.partState(current, part) : 'UNASSIGNED';
-          const statusClass = state === 'PASS' ? 'bg-emerald-100 text-emerald-800' : state === 'FAIL' ? 'bg-rose-100 text-rose-800' : state === 'PENDING' ? 'bg-amber-100 text-amber-800' : 'bg-violet-100 text-violet-800';
-          return `<div data-grammar-result-widget="${part}" class="grammar-latest-card"><div><h5>${GrammarLogic.label(part)}</h5></div><span class="grammar-latest-status ${statusClass}">${current ? this.grammarStatus(current, part) : '미배정'}</span>${current?.grammarResults?.[part] ? resultButton(current, part, true) : ''}</div>`;
+          const result = current?.grammarResults?.[part];
+          const label = { PASS: '통과', FAIL: '미달', PENDING: '채점 대기', UNASSIGNED: '미배정', SCHEDULED: '미응시', IN_PROGRESS: '응시 중' }[state];
+          return `<div data-grammar-result-widget="${part}" class="grammar-result-row" role="listitem"><h5>${GrammarLogic.label(part)}</h5><div class="grammar-result-score"><strong>${result?.score != null ? this.escapeHtml(String(result.score)) + '<small>점</small>' : '—'}</strong><span data-result-state="${state}">${label}</span></div><div class="grammar-result-action">${result ? resultButton(current, part, true) : '<span>응시 전</span>'}</div></div>`;
         }).join('')}</div>
       </div>
       ${this.grammarStudyLink(test.grammarUnitId)}
@@ -202,10 +203,17 @@ Object.assign(App, {
   },
   async startGrammarTest(id) {
     const test = this.grammarTestById(id);
-    if (this.blockGrammarExit() || !this.grammarCanRead(test) || this.state.isAdminLoggedIn) return;
+    if (this._grammarModeSelecting || this.blockGrammarExit() || !this.grammarCanRead(test) || this.state.isAdminLoggedIn) return;
     if (test.grammarStage === 'done') { this.openGrammarTestModal(id); return; }
     const timeStatus = this.getTestTimeStatus(test);
     if (!timeStatus.canStart) { this.toast(timeStatus.message, 'error'); return; }
+    const selected = this.state.selectedStudentId, uid = window.PaceAuth?.auth?.currentUser?.uid, generation = window.PaceAuth?.generation;
+    this._grammarModeSelecting = true;
+    let mode;
+    try { mode = await window.ExamPresentation.ensureMode(test.studentId); }
+    catch (error) { this.toast(error.message, 'error'); return; }
+    finally { this._grammarModeSelecting = false; }
+    if (!mode || this.state.selectedStudentId !== selected || window.PaceAuth?.auth?.currentUser?.uid !== uid || window.PaceAuth?.generation !== generation || !this.grammarCanRead(this.grammarTestById(id)) || !this.getTestTimeStatus(this.grammarTestById(id)).canStart) return;
     this._grammarStarting = true;
     this.lockGrammarNavigation();
     try {
@@ -217,7 +225,8 @@ Object.assign(App, {
       });
       // 이전 버전의 임시 답안은 읽거나 복원하지 않는다.
       try { localStorage.removeItem(`yem_grammar_draft_${saved.studentId}_${saved.id}`); } catch (_) {}
-      this.state.grammarTest = { test: saved, answers: { concept: {}, practice: {} }, index: 0, saving: false };
+      if (!this.state.isStudentLoggedIn || this.state.selectedStudentId !== selected || window.PaceAuth?.generation !== generation || window.PaceAuth?.auth?.currentUser?.uid !== uid) return;
+      this.state.grammarTest = { test: saved, answers: { concept: {}, practice: {} }, index: 0, saving: false, presentationMode: mode };
       this.showGrammarView();
       this.renderGrammarExam();
       window.scrollTo({ top: 0 });
@@ -256,6 +265,7 @@ Object.assign(App, {
       const percent = !assigned ? 0 : done ? 100 : part === 'concept' ? Math.round(conceptAnswered / conceptTotal * 100) : practiceAnswered * 10;
       return `<div class="grammar-stage-progress ${session.test.grammarStage === part ? 'grammar-stage-active' : ''}" role="progressbar" aria-label="${GrammarLogic.label(part)} 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><div class="grammar-stage-fill" style="width:${percent}%"></div><span>${GrammarLogic.label(part)}${!assigned ? ' · 미배정' : done ? ' · 완료' : ''}</span></div>`;
     }).join('');
+    if (session.presentationMode === 'motion') window.ExamMotionPaper.updateGrammarProgress(session);
   },
   renderGrammarExam() {
     const session = this.state.grammarTest;
@@ -265,6 +275,12 @@ Object.assign(App, {
     const concept = test.grammarStage === 'concept';
     document.getElementById('grammarSubmissionStatus').textContent = '';
     this.renderGrammarProgress();
+    if (session.presentationMode === 'motion') {
+      document.getElementById('grammarTestView').classList.add('hidden');
+      document.getElementById('grammarTestContent').innerHTML = '';
+      window.ExamMotionPaper.renderGrammar(session);
+      return;
+    }
     if (concept) {
       document.getElementById('grammarTestContent').innerHTML = this.renderGrammarConceptPaper(test, answers.concept);
     } else if (test.grammarStage === 'practice') this.renderGrammarPractice();
@@ -287,6 +303,7 @@ Object.assign(App, {
     const session = this.state.grammarTest;
     if (!session || session.saving || session.test.grammarStage !== 'practice') return;
     session.answers.practice[index] = Number(value);
+    if (session.presentationMode === 'motion') { this.renderGrammarProgress(); return; }
     this.renderGrammarPractice();
   },
   async submitGrammarConcept() {
@@ -309,6 +326,7 @@ Object.assign(App, {
     session.saving = true;
     document.getElementById('grammarTestContent').inert = true;
     document.getElementById('grammarSubmissionStatus').textContent = '답안 제출 중…';
+    if (session.presentationMode === 'motion') window.ExamMotionPaper.setBusy(true, '답안 제출 중…');
     try {
       const saved = await AppData.updateGrammarTest(session.test.id, update);
       session.test = saved;
@@ -323,11 +341,15 @@ Object.assign(App, {
     } catch (error) {
       document.getElementById('grammarSubmissionStatus').textContent = '제출 실패 · 답안을 유지했습니다';
       this.toast(error.message || '제출하지 못했습니다. 다시 시도해주세요.', 'error');
-    } finally { session.saving = false; document.getElementById('grammarTestContent').inert = false; }
+    } finally {
+      session.saving = false; document.getElementById('grammarTestContent').inert = false;
+      if (session.presentationMode === 'motion') window.ExamMotionPaper.setBusy(false, document.getElementById('grammarSubmissionStatus').textContent);
+    }
   },
   renderGrammarPractice(index = null) {
     const session = this.state.grammarTest;
     if (!session || session.test.grammarStage !== 'practice') return;
+    if (session.presentationMode === 'motion') { window.ExamMotionPaper.renderGrammar(session); return; }
     if (index != null) session.index = Math.max(0, Math.min(9, Number(index)));
     this.state.grammarPractice = { isGrammar: true, title: `${session.test.grammarContent.title} · 실전`, questions: session.test.grammarContent.questions, answers: session.answers.practice, cutoffScore: 80, currentIndex: session.index };
     document.getElementById('grammarPracticeTopInfo').classList.remove('hidden');
@@ -353,6 +375,7 @@ Object.assign(App, {
   },
   async exitGrammarTest() {
     if (this.blockGrammarExit()) return;
+    window.ExamMotionPaper?.close();
     this.state.grammarTest = null;
     this.state.grammarPractice = null;
     document.getElementById('grammarPracticeTopInfo').classList.add('hidden');
@@ -517,7 +540,7 @@ window.addEventListener('popstate', () => {
 document.addEventListener('click', event => {
   if (!App.isGrammarExamActive()) return;
   const target = event.target instanceof Element ? event.target : event.target?.parentElement;
-  if (target?.closest('#grammarTestView')) return;
+  if (target?.closest('#grammarTestView, #motionExamView')) return;
   event.preventDefault();
   event.stopImmediatePropagation();
   App.blockGrammarExit();

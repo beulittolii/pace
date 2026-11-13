@@ -28,12 +28,12 @@
   <main>
     <p class="kicker">PACE / FIRESTORE RULES</p>
     <h1>규칙 복사하고, 콘솔에서 게시하세요.</h1>
-    <p>프로젝트: <strong>english-mastery-d4427</strong><br>본인 학습 목표 수정 권한이 포함된 전체 보안 규칙입니다.</p>
+    <p>프로젝트: <strong>english-mastery-d4427</strong><br>본인 학습 목표와 시험 모드 수정 권한이 포함된 전체 보안 규칙입니다.</p>
     <ol>
       <li><strong>전체 규칙 복사</strong> 버튼을 누르세요.</li>
       <li>Firebase 콘솔에서 <strong>Firestore Database → 규칙(Rules)</strong> 탭을 여세요.</li>
       <li>현재 규칙을 별도로 백업한 뒤, 편집기 내용을 <strong>전체 선택하여 복사한 규칙으로 교체</strong>하세요.</li>
-      <li><strong>게시(Publish)</strong>를 누르고, PACE에서 목표 저장을 다시 시도하세요.</li>
+      <li><strong>게시(Publish)</strong>를 누르고, PACE에서 목표·시험 모드 저장을 다시 시도하세요.</li>
     </ol>
     <div class="actions">
       <button id="copyButton" type="button">전체 규칙 복사</button>
@@ -149,8 +149,11 @@ service cloud.firestore {
         && request.resource.data.name == accountAfter().name && accountAfter().studentId == request.resource.data.id
         && validRedemption(accountAfter().inviteCode));
       allow update: if admin() || (linkedWritable(resource.data.id)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['target'])
-        && request.resource.data.target is string && request.resource.data.target.size() <= 200);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['target','examMode'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['target'])
+          || (request.resource.data.target is string && request.resource.data.target.size() <= 200))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['examMode'])
+          || request.resource.data.examMode in ['classic','motion']));
       allow delete: if admin();
     }
     match /vocabSets/{id} {

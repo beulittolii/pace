@@ -106,8 +106,11 @@ service cloud.firestore {
         && request.resource.data.name == accountAfter().name && accountAfter().studentId == request.resource.data.id
         && validRedemption(accountAfter().inviteCode));
       allow update: if admin() || (linkedWritable(resource.data.id)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['target'])
-        && request.resource.data.target is string && request.resource.data.target.size() <= 200);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['target','examMode'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['target'])
+          || (request.resource.data.target is string && request.resource.data.target.size() <= 200))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['examMode'])
+          || request.resource.data.examMode in ['classic','motion']));
       allow delete: if admin();
     }
     match /vocabSets/{id} {

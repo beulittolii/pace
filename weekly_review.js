@@ -82,7 +82,8 @@ Object.assign(App, {
     }
   },
   showWeeklyReviewView() {
-    this.hideModal('testDetailModal');
+    if (this.state.weeklyReview?.presentationMode === 'motion') this.closeAllModals();
+    else this.hideModal('testDetailModal');
     this.clearVocabQuestionTimer();
     for (const id of ['landingView','studentDashboardView','adminDashboardView','vocabTestView','practiceTestView','textMemorizePaperView','grammarTestView','grammarCompletionView']) document.getElementById(id)?.classList.add('hidden');
     this.state.view = 'weeklyReview';
@@ -90,16 +91,25 @@ Object.assign(App, {
     window.scrollTo({ top: 0 });
   },
   leaveWeeklyReview() {
+    window.ExamMotionPaper?.close();
     this.state.weeklyReview = null;
     if (this.state.isAdminLoggedIn) this.showAdminDashboard();
     else this.selectStudent(this.state.selectedStudentId);
   },
-  startWeeklyReview(id) {
+  async startWeeklyReview(id) {
+    if (this._weeklyModeSelecting || this._weeklyReviewSubmitting) return;
     const test = AppData.getTests().find(t => t.id === id), result = AppData.getWeeklyReviewResult(id);
     if (!test || !WeeklyReviewLogic.available(test) || test.status === 'REVIEW_DATA_NEEDED') return;
     if (result?.completed) return this.showWeeklyReviewResult(id);
+    const selected = this.state.selectedStudentId, uid = window.PaceAuth?.auth?.currentUser?.uid, generation = window.PaceAuth?.generation;
+    this._weeklyModeSelecting = true;
+    let mode;
+    try { mode = await window.ExamPresentation.ensureMode(test.studentId); }
+    catch (error) { this.toast(error.message, 'error'); return; }
+    finally { this._weeklyModeSelecting = false; }
+    if (!mode || this.state.selectedStudentId !== selected || window.PaceAuth?.auth?.currentUser?.uid !== uid || window.PaceAuth?.generation !== generation || !WeeklyReviewLogic.available(AppData.getTests().find(t => t.id === id) || {})) return;
     const ids = result?.remainingIds || test.questions.map(q => q.id);
-    this.state.weeklyReview = { id, questions: WeeklyReviewLogic.shuffle(test.questions.filter(q => ids.includes(q.id))), answers: {}, revision: test.reviewRevision || 1, round: (result?.rounds.length || 0) + 1 };
+    this.state.weeklyReview = { id, questions: WeeklyReviewLogic.shuffle(test.questions.filter(q => ids.includes(q.id))), answers: {}, revision: test.reviewRevision || 1, round: (result?.rounds.length || 0) + 1, presentationMode: mode };
     this.showWeeklyReviewView();
     this.renderWeeklyReviewPaper();
   },
@@ -115,6 +125,12 @@ Object.assign(App, {
   },
   renderWeeklyReviewPaper() {
     const state = this.state.weeklyReview, e = value => this.escapeHtml(String(value));
+    if (state.presentationMode === 'motion') {
+      document.getElementById('weeklyReviewView').innerHTML = '';
+      document.getElementById('weeklyReviewView').classList.add('hidden');
+      window.ExamMotionPaper.renderWeekly(state);
+      return;
+    }
     document.getElementById('weeklyReviewView').innerHTML = `
       <div class="weekly-review-exam">
         <div class="grammar-result-heading"><div><div class="grammar-result-eyebrow">WEEKLY REVIEW · ROUND ${state.round}</div><h1>단어 복습</h1><p class="grammar-result-subtitle">총 ${state.questions.length}문항</p></div><button type="button" onclick="App.leaveWeeklyReview()" class="grammar-result-back">나가기</button></div>
@@ -146,6 +162,7 @@ Object.assign(App, {
     } finally { this._weeklyReviewSubmitting = false; fields.forEach(field => { field.disabled = false; }); }
   },
   showWeeklyReviewResult(id) {
+    window.ExamMotionPaper?.close();
     const test = AppData.getTests().find(t => t.id === id), result = AppData.getWeeklyReviewResult(id);
     if (!test || !result) return;
     this.state.weeklyReview = { id, result: true };

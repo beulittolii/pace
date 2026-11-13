@@ -1,0 +1,71 @@
+/* Every paper rule is scoped to this surface: classic views never inherit it. */
+#motionExamView{position:fixed;inset:0;z-index:80;background:#e1e4dc;color:#263222;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;}
+#motionExamView.hidden{display:none;}
+#motionExamView .motion-tools{position:absolute;inset:0 0 auto;height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:#e1e4dc;border-bottom:1px solid #cfd7c6;z-index:5;}
+#motionExamView .motion-tools button{font-size:12px;padding:7px 13px;border:1px solid #bdc9b3;border-radius:5px;background:transparent;color:#526747;}
+#motionExamView .motion-tools p{font-size:12px;color:#526747;}
+#motionExamView .motion-scroll{position:absolute;inset:48px 0 0;overflow-y:auto;overscroll-behavior:contain;padding:30px 28px 65px;}
+#motionExamView.is-feeding .motion-scroll{overflow:hidden;}
+#motionExamView .motion-paper{box-sizing:border-box;position:relative;width:min(920px,100%);min-height:1100px;margin:auto;padding:29px 50px 50px;background:#fffefb;box-shadow:0 4px 7px #1d2a1b08,0 20px 60px #233a2319;color:#30382a;outline:none;line-height:1.8;word-break:keep-all;overflow-wrap:anywhere;}
+#motionExamView.is-feeding .motion-paper{will-change:transform;}
+#motionExamView .motion-masthead{text-align:center;border-bottom:3px solid #292f25;margin:1px 0 15px;padding-bottom:15px;}
+#motionExamView .motion-masthead p{font-family:'Gulim','굴림','ChosunGu',sans-serif;font-size:13px;font-weight:400;margin:0 0 5px;}
+#motionExamView .motion-masthead h1{font-family:'SM신그래픽','HY신그래픽M','Apple SD Gothic Neo',sans-serif;font-size:36px;font-weight:800;letter-spacing:1.2px;line-height:1.25;margin:0;}
+#motionExamView .motion-instructions{list-style:disc;padding:0 0 12px 15px;margin:0 0 21px;border-bottom:1px solid #c8cebf;font-size:11px;color:#647258;}
+#motionExamView .motion-instructions li{margin:2px 0;padding-left:3px;line-height:1.9;}
+#motionExamView .motion-concept-body .grammar-paper{padding:0!important;border:0;border-radius:0;box-shadow:none;background:none;line-height:1.9;font-size:12px;color:inherit;}
+#motionExamView .motion-concept-body .grammar-paper>h1{display:none;}
+#motionExamView .grammar-definition{gap:12px;padding-bottom:18px;}
+#motionExamView .grammar-definition>strong{font-size:12px;}
+#motionExamView .grammar-paper h2{font-size:13px;margin:20px 0 6px;}
+#motionExamView .grammar-section{padding:16px 0;border-color:#d7dece;break-inside:avoid;}
+#motionExamView .grammar-section h3{font-family:inherit;font-size:12.5px;font-weight:700;margin-bottom:8px;}
+#motionExamView .grammar-muted{font-size:11px;color:#76816a;}
+#motionExamView .grammar-example{margin-top:10px;}
+#motionExamView .grammar-blank{min-width:0;max-width:100%;font-size:12px;padding:3px;background:#f1f5eb;border-bottom:1px solid #6c815c;border-radius:0;}
+#motionExamView .grammar-table{min-width:0;table-layout:fixed;font-size:11px;}
+#motionExamView .grammar-table th,#motionExamView .grammar-table td{min-width:0;padding:8px;overflow-wrap:anywhere;}
+#motionExamView .grammar-table th{width:18%;}
+#motionExamView .grammar-button{border-radius:3px;background:#254d31;color:#fff;font-size:12px;padding:12px 18px;}
+#motionExamView .motion-printer{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:min(1000px,calc(100% - 24px));height:34px;z-index:6;visibility:hidden;pointer-events:none;}
+#motionExamView.is-feeding .motion-printer{visibility:visible;}
+#motionExamView .motion-printer-case{position:absolute;inset:auto 0 0;height:23px;background:linear-gradient(#566451,#354432 32%,#263323);border-radius:7px 7px 0 0;}
+#motionExamView .motion-slot{position:absolute;left:24px;right:24px;bottom:20px;height:7px;background:#101b0c;box-shadow:0 -9px 20px #19221533,inset 0 2px 3px #000;border-radius:5px;}
+#motionExamView .motion-head{position:absolute;left:25px;bottom:27px;width:28px;height:3px;background:#304a25;border-radius:2px;opacity:.65;}
+#motionExamView.is-feeding .motion-head{animation:motion-head-pass .34s linear infinite alternate;}
+@keyframes motion-head-pass{from{left:25px}to{left:calc(100% - 53px)}}
+@media(max-width:640px){#motionExamView .motion-scroll{padding:17px 12px 40px;}#motionExamView .motion-paper{padding:23px 22px 35px;}#motionExamView .motion-masthead{padding-bottom:13px;margin-bottom:12px;}#motionExamView .motion-masthead p{font-size:11px;}#motionExamView .motion-masthead h1{font-size:28px;letter-spacing:.5px;}#motionExamView .grammar-definition{flex-direction:column;gap:6px;}#motionExamView .motion-tools{padding:0 12px;}#motionExamView .motion-printer{width:calc(100% - 8px);}}
+@media(prefers-reduced-motion:reduce){#motionExamView .motion-head{animation:none!important;}}
+
+#motionExamView .motion-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:36px;position:relative;}
+#motionExamView .motion-columns:before{content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;background:#d7dccf;}
+#motionExamView .motion-question{min-width:0;border:0;border-bottom:1px solid #dde3d3;padding:0 0 22px;margin:0 0 24px;break-inside:avoid;}
+#motionExamView .motion-question:last-child{border-bottom:0;}
+#motionExamView .motion-question legend{display:block;width:100%;float:left;font-family:inherit;font-size:12.5px;line-height:1.65;font-weight:700;margin:0 0 11px;padding:0;}
+#motionExamView .motion-question legend+*{clear:both;}
+#motionExamView .motion-question legend>span{font:inherit;margin-right:4px;}
+#motionExamView .motion-passage{font-family:Georgia,'Times New Roman',serif;white-space:pre-line;font-size:13px;line-height:1.8;padding:12px;margin:11px 0 12px;border:1px solid #d3dac8;}
+#motionExamView .motion-options{display:grid;gap:0;margin-top:12px;}
+#motionExamView .motion-options label{position:relative;display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px;align-items:center;min-height:36px;padding:6px 10px 6px 15px;border:0;background:transparent;color:#383f33;cursor:pointer;}
+#motionExamView .motion-options label:hover{color:#13240c;}
+#motionExamView .motion-options input{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;white-space:nowrap;}
+#motionExamView .motion-options label:has(input:focus-visible){outline:2px solid #90ad7a;outline-offset:2px;}
+#motionExamView .motion-option-number{font:16px/1.3 Arial,sans-serif;text-align:center;}
+#motionExamView .motion-option-number b{display:none;font-weight:400;}
+#motionExamView .motion-options input:checked~.motion-option-number>span{display:none;}
+#motionExamView .motion-options input:checked~.motion-option-number b{display:inline;}
+#motionExamView .motion-option-text{font-size:12px;line-height:1.75;}
+#motionExamView .motion-options input:checked~.motion-option-text{font-weight:600;}
+#motionExamView .motion-meaning{border:1px solid #d8dfd0;background:#f7f8f2;padding:15px 16px;margin:0 0 19px;}
+#motionExamView .motion-meaning small{display:block;font-size:10px;color:#849478;margin-bottom:8px;}
+#motionExamView .motion-meaning strong{font-size:19px;line-height:1.6;font-weight:600;color:#33422b;}
+#motionExamView .motion-spelling{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;gap:10px;border:0;}
+#motionExamView .motion-spelling>span{font-size:11px;color:#78886c;}
+#motionExamView .motion-spelling input{box-sizing:border-box;width:100%;min-width:0;border:0;border-radius:2px;padding:11px 8px;font-size:15px;line-height:1.5;background:#f1f5eb;color:#23472c;}
+#motionExamView .motion-spelling input::placeholder{font-size:11px;color:#87977a;}
+#motionExamView .motion-submit{border-top:1px solid #596a4a;padding-top:17px;margin-top:17px;display:flex;align-items:center;justify-content:space-between;gap:14px;}
+#motionExamView .motion-submit>span{font-size:11px;color:#738367;}
+#motionExamView .motion-submit button{border:0;border-radius:3px;background:#254d31;color:#fff;font-size:12px;padding:12px 18px;cursor:pointer;}
+#motionExamView .motion-submit button:disabled{opacity:.6;cursor:wait;}
+#motionExamView input:focus-visible,#motionExamView button:focus-visible{outline:2px solid #91b287;outline-offset:3px;}
+@media(max-width:640px){#motionExamView .motion-columns{display:block;}#motionExamView .motion-columns:before{display:none;}#motionExamView .motion-columns>div:first-child .motion-question:last-child{border-bottom:1px solid #dde3d3;}#motionExamView .motion-options label{min-height:44px;padding-left:16px;}#motionExamView .motion-question legend{font-size:12px;}}

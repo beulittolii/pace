@@ -444,6 +444,8 @@ const App = {
 
   async showLanding() {
     if (!(await this.checkAndConfirmVocabTestExit())) return;
+    window.ExamPresentation?.cancelPending();
+    window.ExamMotionPaper?.close();
     this.clearVocabQuestionTimer();
     this.state.vocabTest = null;
     this.state.practiceTest = null;
@@ -474,6 +476,8 @@ const App = {
 
   async selectStudent(studentId) {
     if (this.blockGrammarExit?.()) return;
+    window.ExamMotionPaper?.close();
+    if (Number(studentId) !== Number(this.state.selectedStudentId)) window.ExamPresentation?.cancelPending();
     const normalizedStudentId = Number(studentId);
     if (!this.state.isAdminLoggedIn && !this.state.isStudentLoggedIn) {
       this.toast('로그인한 후 이용해주세요.', 'info');

@@ -399,3 +399,30 @@ test('study PDF is downloadable from assignment and student detail before the ex
   f.run('App.state.isAdminLoggedIn = false; App.state.isStudentLoggedIn = true; App.state.selectedStudentId = 1; App.openGrammarTestModal(relativeId)');
   assert.match(f.element('detailModalBody').innerHTML, /<a[^>]+href="관계대명사_개념학습.pdf"[^>]+download/);
 });
+
+test('latest results expose separate scores and states with role-appropriate actions and no ordinal label', async () => {
+  const f = assignmentFormFixture();
+  const test = await f.run(`AppData.assignGrammarTest({ ...${assignment}, unitId:'relative-pronouns' })`);
+  f.context.testId = test.id;
+  await f.run("AppData.updateGrammarTest(testId,t=>{t.grammarResults={concept:{waitingGrading:true,score:null},practice:{score:70,passed:false}};t.grammarStage='done';})");
+  f.run('App.openGrammarTestModal(testId)');
+  const html = f.element('detailModalBody').innerHTML;
+  assert.equal((html.match(/role="listitem"/g) || []).length, 2);
+  assert.match(html, /70/); assert.match(html, /채점 대기/); assert.match(html, /미달/);
+  assert.match(html, /App.openGrammarGrading/);
+  assert.doesNotMatch(html, /result-index/);
+  f.run('App.state.isAdminLoggedIn=false;App.state.isStudentLoggedIn=true;App.state.selectedStudentId=1;App.openGrammarTestModal(testId)');
+  assert.doesNotMatch(f.element('detailModalBody').innerHTML, /App.openGrammarGrading/);
+  assert.match(f.element('detailModalBody').innerHTML, /App.openGrammarResult/);
+});
+
+test('a malformed saved score is displayed as text rather than injected into the latest-results markup', async () => {
+  const f = assignmentFormFixture();
+  const test = await f.run(`AppData.assignGrammarTest(${assignment})`);
+  f.context.testId = test.id;
+  await f.run(`AppData.updateGrammarTest(testId,t=>{t.grammarResults.practice={score:'<img src=x onerror=alert(1)>',passed:false};})`);
+  f.run('App.openGrammarTestModal(testId)');
+  const html = f.element('detailModalBody').innerHTML;
+  assert.doesNotMatch(html, /<img src=x/);
+  assert.match(html, /&lt;img src=x/);
+});

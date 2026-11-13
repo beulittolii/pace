@@ -4,7 +4,8 @@
   "scripts": {
     "build:grammar-study": "node scripts/build-grammar-study.cjs",
     "test:grammar-browser": "node tests/grammar-browser.cjs",
-    "test": "node --test tests/auth.test.cjs tests/vocab-sync.test.cjs tests/vocab-data.test.cjs tests/vocab-modes.test.cjs tests/vocab-schedule.test.cjs tests/grammar.test.cjs tests/weekly-review.test.cjs tests/cleanup.test.cjs",
+    "test:exam-motion-browser": "node tests/exam-motion-browser.cjs",
+    "test": "node --test tests/auth.test.cjs tests/vocab-sync.test.cjs tests/vocab-data.test.cjs tests/vocab-modes.test.cjs tests/vocab-schedule.test.cjs tests/grammar.test.cjs tests/weekly-review.test.cjs tests/cleanup.test.cjs tests/exam-mode.test.cjs tests/exam-motion.test.cjs",
     "test:auth-rules": "firebase emulators:exec --project demo-pace-auth --only firestore 'node --test tests/auth-rules.test.cjs'",
     "test:auth-browser": "node tests/auth-browser.cjs",
     "test:auth-integration": "firebase emulators:exec --project demo-pace-auth --only auth,firestore 'node tests/auth-integration.cjs'"

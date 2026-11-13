@@ -50,6 +50,8 @@
     },
     ref(collection, id) { return this.raw.doc(this.db, collection, String(id)); },
     clearData() {
+      root.ExamPresentation?.cancelPending();
+      root.ExamMotionPaper?.close();
       this.generation = (this.generation || 0) + 1;
       this.unsubscribers.splice(0).forEach(stop => stop());
       for (const key of Object.keys(localStorage)) if (/^(yem_|eng_tutoring_)/.test(key)) localStorage.removeItem(key);
@@ -141,6 +143,31 @@
         if (snap.data().studentId !== this.member?.studentId) this.enter().catch(e => App.toast(this.error(e), 'error'));
       }));
     },
+    async persistExamMode(mode) {
+      if (!['classic', 'motion'].includes(mode)) throw Error('시험 모드를 확인해주세요.');
+      const uid = this.auth?.currentUser?.uid, id = this.member?.studentId, generation = this.generation;
+      await this.ready();
+      const student = AppData.getStudentById(id);
+      if (!uid || this.auth.currentUser?.uid !== uid || this.generation !== generation || this.member?.studentId !== id || student?.accountUid !== uid || student.linking) throw Error('계정과 학생 프로필 연결을 확인해주세요.');
+      await this.raw.updateDoc(this.ref('students', id), { examMode: mode });
+      if (this.generation !== generation || this.auth.currentUser?.uid !== uid || this.member?.studentId !== id) throw Error('로그인 상태가 변경되었어요.');
+      const current = FirebaseStore.students.find(item => item.id === id);
+      if (current) current.examMode = mode;
+      AppData.refreshCloudScreens();
+      return mode;
+    },
+    async saveExamMode(event) {
+      event?.preventDefault();
+      if (this.examModeBusy || this.passwordBusy || this.goalBusy || this.universityBusy) return;
+      const mode = document.querySelector('[name="profileExamMode"]:checked')?.value;
+      const form = document.getElementById('examModeSettingsForm'), message = document.getElementById('examModeSettingsMessage');
+      const controls = [...form.querySelectorAll('input, button')];
+      this.examModeBusy = true; message.textContent = ''; form.setAttribute('aria-busy', 'true');
+      controls.forEach(control => { control.disabled = true; });
+      try { await this.persistExamMode(mode); message.textContent = '문법·복습 시험 모드를 저장했어요. 다음 응시부터 적용됩니다.'; }
+      catch (error) { message.textContent = this.error(error); }
+      finally { this.examModeBusy = false; form.removeAttribute('aria-busy'); controls.forEach(control => { control.disabled = false; }); }
+    },
     openProfileSettings(tab = 'goal') {
       if (!this.auth?.currentUser) { App.toast('로그인 후 프로필을 설정해주세요.', 'error'); return; }
       const dialog = document.getElementById('passwordSettingsDialog');
@@ -151,16 +178,17 @@
       document.getElementById('goalSettingsMessage').textContent = '';
       document.getElementById('learningGoal').value = AppData.getStudentById(this.member?.studentId)?.target || '';
       AcademicManager.prepareTargetUnivEditor(this.member?.studentId);
+      root.ExamPresentation?.renderProfile();
       this.switchProfileTab(tab, false);
       dialog.showModal();
-      document.getElementById(tab === 'goal' ? 'learningGoal' : tab === 'university' ? 'universitySettingsTab' : 'currentPassword').focus();
+      document.getElementById(tab === 'goal' ? 'learningGoal' : tab === 'university' ? 'universitySettingsTab' : tab === 'examMode' ? 'examModeSettingsTab' : 'currentPassword').focus();
     },
     openPasswordSettings() { this.openProfileSettings('password'); },
     switchProfileTab(tab, focus = true) {
-      if (this.passwordBusy || this.goalBusy || this.universityBusy) return;
-      if (!['goal', 'university', 'password'].includes(tab)) return;
+      if (this.passwordBusy || this.goalBusy || this.universityBusy || this.examModeBusy) return;
+      if (!['goal', 'university', 'password', 'examMode'].includes(tab)) return;
       document.getElementById('passwordSettingsDialog').classList.toggle('pace-profile-university', tab === 'university');
-      for (const name of ['goal', 'university', 'password']) {
+      for (const name of ['goal', 'university', 'password', 'examMode']) {
         const active = name === tab, button = document.getElementById(`${name}SettingsTab`);
         button.setAttribute('aria-selected', String(active));
         button.tabIndex = active ? 0 : -1;
@@ -172,13 +200,13 @@
     profileTabKeydown(event, tab) {
       if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault();
-      const tabs = ['goal', 'university', 'password'];
+      const tabs = ['goal', 'university', 'password', 'examMode'];
       const next = (tabs.indexOf(tab) + (event.key === 'ArrowLeft' ? -1 : 1) + tabs.length) % tabs.length;
       this.switchProfileTab(event.key === 'Home' ? 'goal' : event.key === 'End' ? 'password' : tabs[next]);
     },
     async saveGoal(event) {
       event?.preventDefault();
-      if (this.goalBusy || this.passwordBusy || this.universityBusy) return;
+      if (this.goalBusy || this.passwordBusy || this.universityBusy || this.examModeBusy) return;
       const form = document.getElementById('goalSettingsForm');
       const message = document.getElementById('goalSettingsMessage');
       const target = document.getElementById('learningGoal').value.trim();
@@ -209,14 +237,14 @@
       if (saved) { this.closePasswordSettings(); App.toast(target ? '학습 목표가 저장되었어요.' : '학습 목표를 지웠어요.', 'success'); }
     },
     closePasswordSettings() {
-      if (this.passwordBusy || this.goalBusy || this.universityBusy) return;
+      if (this.passwordBusy || this.goalBusy || this.universityBusy || this.examModeBusy) return;
       document.getElementById('passwordSettingsDialog').close();
       document.getElementById('passwordSettingsForm').reset();
       this.passwordSettingsOpener?.focus();
     },
     async changePassword(event) {
       event?.preventDefault();
-      if (this.passwordBusy || this.goalBusy || this.universityBusy) return;
+      if (this.passwordBusy || this.goalBusy || this.universityBusy || this.examModeBusy) return;
       const form = document.getElementById('passwordSettingsForm');
       const message = document.getElementById('passwordSettingsMessage');
       const currentPassword = document.getElementById('currentPassword').value;

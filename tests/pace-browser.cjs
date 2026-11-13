@@ -32,7 +32,7 @@ const server = http.createServer((req, res) => {
   await page.addScriptTag({ content: fs.readFileSync(process.env.TAILWIND_SCRIPT_PATH || '/private/tmp/yem-tailwind-test.js', 'utf8') + '\n' + inline.find(code => code.includes('tailwind.config')) });
   await page.evaluate(() => document.body.classList.add('tailwind-test-ready'));
   await page.waitForFunction(() => getComputedStyle(document.querySelector('header')).position === 'sticky' && getComputedStyle(document.getElementById('vocabTestView')).display === 'none');
-  for (const file of ['weekly_review_logic.js', 'grammar_data.js', 'grammar_paper.js', 'data.js', 'grammar_store.js', 'weekly_review_store.js', 'app.js', 'grammar.js', 'weekly_review.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
+  for (const file of ['weekly_review_logic.js', 'grammar_data.js', 'grammar_paper.js', 'exam_mode.js', 'exam_motion.js', 'data.js', 'grammar_store.js', 'weekly_review_store.js', 'app.js', 'grammar.js', 'weekly_review.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
   await page.addScriptTag({ content: inline.find(code => code.includes('const AcademicManager =')) });
   await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'pace.js'), 'utf8') });
   await page.evaluate(() => {

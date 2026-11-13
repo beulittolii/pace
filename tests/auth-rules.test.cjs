@@ -121,6 +121,18 @@ test('students can edit only their own bounded learning goal, including calendar
  await assertFails(f.updateDoc(ref,{target:'수정'}));
 });
 
+test('linked students may save only supported shared exam modes on their own profile',async()=>{
+ const {db,id}=await calendarStudent(),ref=f.doc(db,'students',String(id));
+ await assertSucceeds(f.updateDoc(ref,{examMode:'classic'}));
+ await assertSucceeds(f.updateDoc(ref,{examMode:'motion'}));
+ await assertSucceeds(f.updateDoc(ref,{target:'유지되는 목표'}));
+ for(const patch of [{examMode:'other'},{examMode:null},{examMode:3},{examMode:f.deleteField()},{examMode:'classic',accessMode:'FULL'},{examMode:'motion',accountUid:'other'},{examMode:'motion',score:100}]) await assertFails(f.updateDoc(ref,patch));
+ await env.withSecurityRulesDisabled(c=>f.setDoc(f.doc(c.firestore(),'students','42'),{id:42,accountUid:'other',target:''}));
+ await assertFails(f.updateDoc(f.doc(db,'students','42'),{examMode:'motion'}));
+ await env.withSecurityRulesDisabled(c=>f.updateDoc(f.doc(c.firestore(),'students',String(id)),{linking:true}));
+ await assertFails(f.updateDoc(ref,{examMode:'classic'}));
+});
+
 test('calendar-only students can bootstrap, save and update assigned vocabulary results and their schedule status',async()=>{
  const {db,id}=await calendarStudent();
  const ref=f.doc(db,'vocabTestResults','calendar-result');
@@ -197,6 +209,11 @@ async function learningStore(db,id) {
   const LOCAL_CACHE_KEYS={tests:'tests'};function setLocalCache(){}
   const App={state:{isAdminLoggedIn:false,selectedStudentId:${id}},convertKorToEng:v=>v};
   const AppData={isFirebaseReady:()=>true,getTests:()=>FirebaseStore.tests,getVocabTestResults:()=>FirebaseStore.vocabTestResults,getVocabSets:()=>FirebaseStore.vocabSets,refreshCloudScreens(){}};`);
+  // Use real mode helpers; this fixture predates adaptive vocabulary directions.
+  context.vocabHelpers=vm.runInNewContext(fs.readFileSync('data.js','utf8')+';({getVocabQuestionCount:AppData.getVocabQuestionCount,getVocabDirections:AppData.getVocabDirections})',{
+   console,Date,Math,setTimeout,clearTimeout,localStorage:{getItem:()=>null,setItem(){}},window:{}
+  });
+  run('Object.assign(AppData,vocabHelpers)');
  for(const file of ['grammar_data.js','grammar_store.js','weekly_review_logic.js','weekly_review_store.js']) run(fs.readFileSync(file,'utf8'));
  context.records=(await f.getDocs(f.query(f.collection(db,'tests'),f.where('studentId','==',id)))).docs.map(doc=>({...doc.data(),id:doc.id}));
  run('FirebaseStore.tests=records');
@@ -248,7 +265,7 @@ test('English-only weekly store can create, unlock and submit its own weekly rev
   await f.setDoc(f.doc(admin,'vocabSets','set'),{id:'set',words});
   for(let day=0;day<5;day++) {
    const testId=day===0?'calendar-vocab':`day-${day}`;
-   await f.setDoc(f.doc(admin,'tests',testId),{id:testId,studentId:id,type:'VOCAB',date:`2026-11-${9+day<10?'0':''}${9+day}`,status:'PASS',vocabSetId:'set'});
+   await f.setDoc(f.doc(admin,'tests',testId),{id:testId,studentId:id,type:'VOCAB',date:`2026-11-${9+day<10?'0':''}${9+day}`,status:'PASS',vocabSetId:'set',vocabQuestionCounts:{3:0,4:0}});
    await f.setDoc(f.doc(admin,'vocabTestResults',`result-${day}`),{id:`result-${day}`,studentId:id,testId,direction:2,score:80,completedAt:'2026-11-09T10:00:00Z',questionDetails:[{word:words[0],isCorrect:false}]});
   }
  });
