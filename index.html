@@ -1294,7 +1294,7 @@
 
   <footer class="mt-auto border-t border-slate-200 bg-white/70 py-6 text-center text-xs text-slate-400">
     <div class="max-w-7xl mx-auto px-4 flex items-center justify-center">
-      <p>v2.1.21</p>
+      <p>v2.1.22</p>
     </div>
   </footer>
 
@@ -2716,6 +2716,17 @@
           </span>
           <p id="detailAssessNote" class="text-xs text-indigo-950 whitespace-pre-line leading-relaxed font-normal pt-0.5"></p>
         </div>
+        <section id="assessmentPdfArea" hidden class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2" aria-label="자료 PDF">
+          <h4 class="text-xs font-bold text-slate-800">자료 PDF</h4>
+          <p id="assessmentPdfStatus" class="text-xs text-slate-600" role="status"></p>
+          <input id="assessmentPdfInput" type="file" accept=".pdf,application/pdf" hidden>
+          <div class="flex flex-wrap gap-2">
+            <button id="assessmentPdfChoose" type="button" class="rounded-lg bg-emerald-700 text-white px-3 py-2 text-xs font-bold disabled:opacity-60">PDF 첨부</button>
+            <button id="assessmentPdfOpen" type="button" hidden class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold disabled:opacity-60">파일 열기</button>
+            <button id="assessmentPdfDelete" type="button" hidden class="rounded-lg border border-rose-200 text-rose-700 px-3 py-2 text-xs font-bold disabled:opacity-60">삭제</button>
+          </div>
+          <p id="assessmentPdfDrop" hidden class="rounded-xl border-2 border-dashed border-emerald-200 bg-white px-3 py-4 text-center text-xs text-emerald-800">여기에 PDF를 드래그해 첨부</p>
+        </section>
         <!-- 2. 진행 상태 3단계 퀵 탭 -->
         <div class="pace-assess-progress">
           <div class="flex items-center justify-between text-xs">
@@ -8306,6 +8317,7 @@ const AcademicManager = {
     }
 
     modal.classList.remove('hidden');
+    void window.AssessmentPdf?.mount({ assessmentId: item.id, studentId: Number(item.studentId), isAdmin });
     const content = modal.querySelector('.modal-content');
     if (content) {
       content.classList.remove('opacity-0', 'scale-95');
@@ -8314,6 +8326,7 @@ const AcademicManager = {
   },
 
   closeAssessmentDetailModal() {
+    window.AssessmentPdf?.clear();
     const modal = document.getElementById('academicAssessmentDetailModal');
     if (modal) modal.classList.add('hidden');
     this.currentDetailItem = null;
@@ -11304,7 +11317,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <script src="pace.js?v=20261107_pace02"></script>
-<script src="auth.js?v=20261113_motion01"></script>
+<script src="assessment-pdf-config.js?v=20261122_01"></script>
+<script src="assessment-pdf.js?v=20261122_01"></script>
+<script src="auth.js?v=20261122_pdf01"></script>
 <script src="vocab-sync.js?v=20261109_calendar01"></script>
 <script src="auth-data.js?v=20261108_03"></script>
 </body>

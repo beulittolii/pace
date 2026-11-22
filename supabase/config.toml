@@ -1,0 +1,4 @@
+project_id = "pace"
+
+[functions.assessment-pdf]
+verify_jwt = false
