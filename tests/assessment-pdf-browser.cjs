@@ -36,7 +36,7 @@ async function main() {
     }
     if (req.url === '/client.js') return res.writeHead(200, { 'Content-Type': 'application/javascript' }).end(client);
     const two = req.url === '/other';
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(`<meta name="viewport" content="width=device-width"><button id="existing">수행평가 상세</button>${panel}<script src="/client.js"></script><script>
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(`<meta name="viewport" content="width=device-width"><div id="academicAssessmentDetailModal"><button id="existing">수행평가 상세</button>${panel}</div><script src="/client.js"></script><script>
       window.PACE_PDF_ENDPOINT = location.origin + '/api';
       window.PaceAuth = { generation: 1, member: { studentId: ${two ? 2 : 1} }, auth: { currentUser: { uid: '${two ? 'two' : 'one'}', getIdToken: async () => '${two ? 'two' : 'one'}' } } };
       window.AssessmentPdf.mount({ assessmentId: 'assess_123', studentId: ${two ? 2 : 1}, isAdmin: false });
@@ -48,6 +48,7 @@ async function main() {
     browser = await chromium.launch({ channel: 'chrome', headless: true });
     const site = `http://127.0.0.1:${server.address().port}`;
     const desktop = await browser.newPage();
+    desktop.setDefaultTimeout(5000);
     await desktop.goto(site);
     await desktop.getByText('PDF 1개 · 최대 5MB').waitFor();
     const payload = await desktop.evaluateHandle(base64 => {
@@ -58,6 +59,20 @@ async function main() {
     await desktop.locator('#assessmentPdfDrop').dispatchEvent('drop', { dataTransfer: payload });
     await desktop.getByText('PDF를 첨부했어요.').waitFor();
     const phone = await browser.newPage({ ...devices['Pixel 7'] });
+    phone.setDefaultTimeout(5000);
+    await phone.addInitScript(() => {
+      // Keep the real popup but observe the handoff instead of loading the headless PDF plug-in.
+      const open = window.open.bind(window);
+      window.open = (...args) => {
+        const tab = open(...args);
+        if (!tab) return tab;
+        return {
+          get document() { return tab.document; }, get closed() { return tab.closed; },
+          set opener(value) { tab.opener = value; }, close() { tab.close(); },
+          location: { set href(url) { window.testPdfHandoff = url; } }
+        };
+      };
+    });
     await phone.goto(site);
     await phone.getByRole('button', { name: '파일 열기' }).waitFor();
     assert.equal(await phone.locator('#assessmentPdfDrop').isVisible(), false);
@@ -66,10 +81,10 @@ async function main() {
     await phone.getByRole('button', { name: '파일 열기' }).click();
     const popup = await popupPromise;
     assert.deepEqual(await (await fetchPromise).body(), pdf);
-    // Chromium's native PDF viewer does not reliably emit the page load event.
-    await popup.waitForURL(/^blob:/, { waitUntil: 'commit' });
+    await phone.waitForFunction(() => window.testPdfHandoff?.startsWith('blob:'));
     await popup.close();
     const other = await browser.newPage();
+    other.setDefaultTimeout(5000);
     await other.goto(`${site}/other`);
     await other.getByText(/잠시 후 다시 시도/).waitFor();
     assert.equal(await other.getByRole('button', { name: '파일 열기' }).isVisible(), false);

@@ -14,6 +14,14 @@
       if (files.length) void upload(files);
     });
     const fileDrag = event => Array.from(event.dataTransfer?.types || []).includes('Files');
+    const modal = document.getElementById('academicAssessmentDetailModal');
+    for (const eventName of ['dragover', 'drop']) {
+      modal?.addEventListener(eventName, event => {
+        if (!active?.desktop || !isCurrent(active) || event.defaultPrevented || !fileDrag(event)) return;
+        event.preventDefault();
+        if (eventName === 'dragover') event.dataTransfer.dropEffect = 'none';
+      });
+    }
     ui.drop.addEventListener('dragover', event => {
       if (!fileDrag(event)) return;
       event.preventDefault();

@@ -8,7 +8,7 @@ function setup({ desktop = true, configured = true, saved = false } = {}) {
     hidden = true; disabled = false; textContent = ''; value = '';
     click() { this.dispatchEvent(new Event('click')); }
   }
-  const ids = ['assessmentPdfArea', 'assessmentPdfStatus', 'assessmentPdfInput', 'assessmentPdfChoose', 'assessmentPdfDrop', 'assessmentPdfOpen', 'assessmentPdfDelete'];
+  const ids = ['academicAssessmentDetailModal', 'assessmentPdfArea', 'assessmentPdfStatus', 'assessmentPdfInput', 'assessmentPdfChoose', 'assessmentPdfDrop', 'assessmentPdfOpen', 'assessmentPdfDelete'];
   const elements = Object.fromEntries(ids.map(id => [id, new Control()]));
   elements.assessmentPdfChoose.hidden = false;
   const user = { uid: 'a', getIdToken: async () => 'firebase-id-token' };
@@ -78,6 +78,18 @@ test('invalid drops and declined replacements do not upload', async () => {
   ui.state.confirm = false;
   ui.drop([ui.file()]);
   await ui.tick();
+  assert.deepEqual(ui.requests.map(r => r[0]), ['HEAD']);
+});
+
+test('missing the drop zone does not navigate away from the assessment', async () => {
+  const ui = setup();
+  await ui.mount();
+  for (const kind of ['dragover', 'drop']) {
+    const event = new Event(kind, { cancelable: true });
+    event.dataTransfer = { files: [ui.file()], types: ['Files'] };
+    ui.academicAssessmentDetailModal.dispatchEvent(event);
+    assert.equal(event.defaultPrevented, true);
+  }
   assert.deepEqual(ui.requests.map(r => r[0]), ['HEAD']);
 });
 
