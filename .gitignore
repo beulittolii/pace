@@ -15,3 +15,5 @@ auto_sync.log
 *service-account*.json
 *serviceAccount*.json
 /auth-backups/
+/supabase/.temp/
+/supabase/.branches/
