@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from 'npm:jose@6.2.2';
 import { createClient } from 'npm:@supabase/supabase-js@2.99.0';
-import { buildHandler, createAuthorizer } from './handler.mjs';
+import { buildHandler, createAuthorizer, storageObjectExists } from './handler.mjs';
 
 const project = 'english-mastery-d4427';
 const jwks = createRemoteJWKSet(new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'));
@@ -29,11 +29,7 @@ function notFound(error: unknown) {
 }
 
 Deno.serve(buildHandler({ authorize, origins: (Deno.env.get('PACE_PDF_ORIGINS') || '').split(',').map(s => s.trim()).filter(Boolean), storage: {
-  exists: async (key: string) => {
-    const { data, error } = await bucket.exists(key);
-    if (error && !notFound(error)) throw error;
-    return data === true;
-  },
+  exists: (key: string) => storageObjectExists(bucket, key),
   get: async (key: string) => {
     const { data, error } = await bucket.download(key);
     if (error && !notFound(error)) throw error;

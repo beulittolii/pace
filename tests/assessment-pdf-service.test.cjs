@@ -6,8 +6,8 @@ const origin = 'https://pace.example';
 const id = 'assess_123';
 const url = `https://storage.example/?id=${id}`;
 
-async function fixture({ claims = { sub: 'studentA' }, owner = 'studentA', linked = true, exists = true, failWrite = false, accessMode } = {}) {
-  const { buildHandler, createAuthorizer } = await load();
+async function fixture({ claims = { sub: 'studentA' }, owner = 'studentA', linked = true, exists = true, failWrite = false, accessMode, storageHead } = {}) {
+  const { buildHandler, createAuthorizer, storageObjectExists } = await load();
   const doc = (values) => ({ fields: values });
   const str = stringValue => ({ stringValue });
   const docs = {
@@ -21,7 +21,8 @@ async function fixture({ claims = { sub: 'studentA' }, owner = 'studentA', linke
     return claims;
   }, read: async (path, token) => token === 'good' ? docs[path] : null });
   const handler = buildHandler({ authorize, origins: [origin], storage: {
-    exists: async key => objects.has(key), get: async key => objects.get(key),
+    exists: storageHead ? key => storageObjectExists({ exists: storageHead }, key) : async key => objects.has(key),
+    get: async key => objects.get(key),
     put: async (key, content) => { if (failWrite) throw Error('offline'); objects.set(key, content); },
     remove: async key => { objects.delete(key); }
   }});
@@ -81,4 +82,21 @@ test('calendar-only students cannot use the school assessment attachment service
   const { send } = await fixture({ accessMode: 'CALENDAR_ONLY' });
   assert.equal((await send('HEAD')).status, 403);
   assert.equal((await send('PUT', pdf)).status, 403);
+});
+
+test('Supabase legacy HEAD missing-object responses allow a first upload', async () => {
+  for (const error of [{ status: 400 }, { status: 404 }, { originalError: { status: 400 } }]) {
+    const { send } = await fixture({ storageHead: async () => ({ data: false, error }) });
+    assert.equal((await send('HEAD')).status, 404);
+    assert.equal((await send('PUT', pdf)).status, 204);
+  }
+});
+
+test('other storage failures are not mistaken for a missing attachment', async () => {
+  for (const status of [401, 403, 500]) {
+    const { send } = await fixture({ storageHead: async () => ({ data: false, error: { status } }) });
+    assert.equal((await send('HEAD')).status, 503);
+  }
+  const { send } = await fixture({ storageHead: async () => ({ data: true, error: null }) });
+  assert.equal((await send('HEAD')).status, 204);
 });

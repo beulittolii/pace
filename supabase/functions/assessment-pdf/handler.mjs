@@ -3,6 +3,17 @@ const VALID_ID = /^[a-zA-Z0-9_-]{1,128}$/;
 const PDF_MAGIC = [37, 80, 68, 70, 45];
 const methods = ['HEAD', 'GET', 'PUT', 'DELETE', 'OPTIONS'];
 
+export async function storageObjectExists(bucket, key) {
+  const { data, error } = await bucket.exists(key);
+  if (error) {
+    const status = Number(error.status ?? error.statusCode ?? error.originalError?.status);
+    // The Storage SDK reports missing objects as false with 400 or 404 for HEAD.
+    if (data === false && (status === 400 || status === 404)) return false;
+    throw error;
+  }
+  return data === true;
+}
+
 export function createAuthorizer({ project, verify, read }) {
   return async (token, id) => {
     if (!token) return { status: 401 };
