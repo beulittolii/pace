@@ -105,6 +105,7 @@ test('unconfigured, admin, and other-owner views do not query the backend', asyn
   const ui = setup();
   await ui.mount({ isAdmin: true });
   await ui.mount({ studentId: 13 });
+  await ui.mount({ calendarOnly: true });
   assert.equal(ui.assessmentPdfArea.hidden, true);
   assert.deepEqual(ui.requests, []);
 });

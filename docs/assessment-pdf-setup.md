@@ -13,7 +13,7 @@ npx supabase secrets set --remote=iduefrwbaqpdmiqxxnuy --yes 'PACE_PDF_ORIGINS=h
 npx supabase functions deploy assessment-pdf --remote=iduefrwbaqpdmiqxxnuy --use-api --no-verify-jwt --yes
 ```
 
-함수의 기본 Supabase JWT 검증은 끄지만, 함수 자체가 PACE Firebase 토큰을 검증하고 Firestore에서 학생과 수행평가 소유권을 확인한다. 공개 버킷 또는 직접 다운로드 정책을 추가하지 않는다. 브라우저에 서비스 역할 키나 학생 토큰을 설정값으로 넣지 않는다. 도메인을 옮기면 `PACE_PDF_ORIGINS`에 경로 없이 정확한 origin을 설정한다.
+함수의 기본 Supabase JWT 검증은 끄지만, 함수 자체가 PACE Firebase 토큰을 검증하고 Firestore에서 학생과 수행평가 소유권을 확인한다. 영어 학습 캘린더 전용 계정에는 학교 수행평가 첨부 권한이 없다. 공개 버킷 또는 직접 다운로드 정책을 추가하지 않는다. 브라우저에 서비스 역할 키나 학생 토큰을 설정값으로 넣지 않는다. 도메인을 옮기면 `PACE_PDF_ORIGINS`에 경로 없이 정확한 origin을 설정한다.
 
 Supabase 무료 프로젝트가 일시 정지되면 대시보드에서 **Resume project**를 선택한다. 사용량은 조직의 Usage에서 확인한다. 중요한 자료는 학생이 원본도 별도로 보관하도록 안내한다.
 

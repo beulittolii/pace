@@ -125,11 +125,11 @@
     if (ui) { ui.area.hidden = true; ui.input.value = ''; }
   }
 
-  async function mount({ assessmentId, studentId, isAdmin }) {
+  async function mount({ assessmentId, studentId, isAdmin, calendarOnly }) {
     clear();
     const pace = root.PaceAuth;
     const user = pace?.auth?.currentUser;
-    if (!user || isAdmin || pace.admin || pace.member?.studentId !== studentId || !root.PACE_PDF_ENDPOINT) return;
+    if (!user || isAdmin || calendarOnly || pace.admin || pace.member?.studentId !== studentId || !root.PACE_PDF_ENDPOINT) return;
     const url = new URL(root.PACE_PDF_ENDPOINT);
     url.searchParams.set('id', assessmentId);
     bind();

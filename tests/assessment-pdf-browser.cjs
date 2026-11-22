@@ -66,7 +66,8 @@ async function main() {
     await phone.getByRole('button', { name: '파일 열기' }).click();
     const popup = await popupPromise;
     assert.deepEqual(await (await fetchPromise).body(), pdf);
-    await popup.waitForURL(/^blob:/);
+    // Chromium's native PDF viewer does not reliably emit the page load event.
+    await popup.waitForURL(/^blob:/, { waitUntil: 'commit' });
     await popup.close();
     const other = await browser.newPage();
     await other.goto(`${site}/other`);

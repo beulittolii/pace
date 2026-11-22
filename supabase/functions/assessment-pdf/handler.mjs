@@ -21,6 +21,7 @@ export function createAuthorizer({ project, verify, read }) {
       read(`students/${studentId}`, token), read(`academicRecords/academicAssessments_${studentId}`, token)
     ]);
     if (student?.fields?.accountUid?.stringValue !== uid || student.fields.linking?.booleanValue === true
+      || (student.fields.accessMode?.stringValue ?? 'FULL') !== 'FULL'
       || assessments?.fields?.kind?.stringValue !== 'academicAssessments'
       || assessments?.fields?.studentId?.integerValue !== studentId
       || !assessments.fields.items?.arrayValue?.values?.some(item => item.mapValue?.fields?.id?.stringValue === id)) {

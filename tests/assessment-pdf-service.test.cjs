@@ -6,13 +6,13 @@ const origin = 'https://pace.example';
 const id = 'assess_123';
 const url = `https://storage.example/?id=${id}`;
 
-async function fixture({ claims = { sub: 'studentA' }, owner = 'studentA', linked = true, exists = true, failWrite = false } = {}) {
+async function fixture({ claims = { sub: 'studentA' }, owner = 'studentA', linked = true, exists = true, failWrite = false, accessMode } = {}) {
   const { buildHandler, createAuthorizer } = await load();
   const doc = (values) => ({ fields: values });
   const str = stringValue => ({ stringValue });
   const docs = {
     'members/studentA': doc({ studentId: { integerValue: '12' } }),
-    'students/12': doc({ accountUid: str(owner), linking: { booleanValue: !linked } }),
+    'students/12': doc({ accountUid: str(owner), linking: { booleanValue: !linked }, ...(accessMode ? { accessMode: str(accessMode) } : {}) }),
     'academicRecords/academicAssessments_12': doc({ kind: str('academicAssessments'), studentId: { integerValue: '12' }, items: { arrayValue: { values: exists ? [{ mapValue: { fields: { id: str(id) } } }] : [] } } })
   };
   const objects = new Map();
@@ -75,4 +75,10 @@ test('CORS preflight is restricted and storage failures are isolated', async () 
   assert.equal((await send('OPTIONS')).headers.get('access-control-allow-origin'), origin);
   assert.equal((await send('OPTIONS', undefined, { Origin: 'https://other.example' })).status, 403);
   assert.equal((await send('PUT', pdf)).status, 503);
+});
+
+test('calendar-only students cannot use the school assessment attachment service', async () => {
+  const { send } = await fixture({ accessMode: 'CALENDAR_ONLY' });
+  assert.equal((await send('HEAD')).status, 403);
+  assert.equal((await send('PUT', pdf)).status, 403);
 });
