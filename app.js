@@ -35,12 +35,18 @@ const App = {
   },
 
   // 최초 진입과 로그인 데이터 준비에 같은 스켈레톤을 재사용합니다.
-  showLoadingSkeleton(role = 'login') {
+  showLoadingSkeleton(role = 'login', message = '') {
     const skeleton = document.getElementById('initialLoadingSkeleton');
     if (!skeleton) return;
     clearTimeout(this.loadingSkeletonTimer);
     skeleton.classList.remove('initial-loading-skeleton--leaving', 'initial-loading-skeleton--student', 'initial-loading-skeleton--admin');
     if (role === 'student' || role === 'admin') skeleton.classList.add(`initial-loading-skeleton--${role}`);
+    const status = document.getElementById('initialLoadingMessage');
+    if (status) {
+      status.textContent = message;
+      status.hidden = !message;
+    }
+    skeleton.setAttribute('aria-label', message || '데이터를 준비하고 있습니다');
     skeleton.hidden = false;
     skeleton.tabIndex = -1;
     skeleton.focus({ preventScroll: true });
@@ -11957,6 +11963,6 @@ const App = {
 };
 document.addEventListener('DOMContentLoaded', () => {
   App.init();
-  App.finishInitialLoading();
-  window.PaceAuth?.boot();
+  if (window.PaceAuth?.boot) window.PaceAuth.boot();
+  else App.finishInitialLoading();
 });

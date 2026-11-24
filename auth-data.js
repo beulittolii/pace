@@ -102,28 +102,46 @@ Object.assign(PaceAuth, {
     });
   },
   async boot() {
-    this.clearData();
+    this.setLoginRestorePending(true);
+    App.showLoadingSkeleton();
+    const checkingTimer = setTimeout(() => App.showLoadingSkeleton('login', '로그인 상태 확인 중…'), 300);
+    const finishRestore = () => {
+      clearTimeout(checkingTimer);
+      App.finishInitialLoading();
+      this.setLoginRestorePending(false);
+      App.focusLoginInput();
+    };
+    const showError = error => {
+      const el = document.getElementById('loginError');
+      el.textContent = this.error(error); el.classList.remove('hidden');
+    };
     try {
+      this.clearData();
       await this.ready();
       this.installBridge();
-      this.observedUid = null;
+      this.observedUid = undefined;
       this.f.onAuthStateChanged(this.auth, async user => {
         const uid = user?.uid || null;
         if (uid !== (this.auth.currentUser?.uid || null)) return;
         if (this.managed) { this.observedUid = uid; return; }
         if (this.observedUid === uid) return;
+        const restoring = this.observedUid === undefined;
         this.observedUid = uid;
+        if (restoring) clearTimeout(checkingTimer);
         try {
-          if (user) await this.enter();
+          if (user) await this.enter(true, restoring ? '자동 로그인 중…' : '');
           else { this.clearData(); this.close(); await App.showLanding(); }
         } catch (error) {
           this.clearData();
-          const el = document.getElementById('loginError');
-          el.textContent = this.error(error); el.classList.remove('hidden');
+          if (restoring) { this.close(); await App.showLanding(); }
+          showError(error);
+        } finally {
+          if (restoring) finishRestore();
         }
       });
     } catch(error) {
-      const el = document.getElementById('loginError'); el.textContent = this.error(error); el.classList.remove('hidden');
+      showError(error);
+      finishRestore();
     }
   }
 });
@@ -139,4 +157,3 @@ App.renderAdminStudentsTab = function () {
   }
   PaceAuth.renderAdmin();
 };
-

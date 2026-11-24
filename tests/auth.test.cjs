@@ -82,6 +82,13 @@ function deferred() {
   return {promise,resolve,reject};
 }
 
+test('a direct login attempt cannot submit credentials while the saved session is being checked', async () => {
+  const {auth,calls} = loginFixture();
+  auth.loginRestorePending = true;
+  await auth.login();
+  assert.deepEqual(calls, []);
+});
+
 function profileFixture() {
   const vm = require('node:vm'), fs = require('node:fs');
   const calls = [], controls = [{disabled:false},{disabled:false}];

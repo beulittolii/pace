@@ -22,7 +22,7 @@
   <!-- Font Awesome Icons CDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="style.css?v=20261109_login01" />
+  <link rel="stylesheet" href="style.css?v=20261124_auto_login01" />
   <link rel="stylesheet" href="pace.css?v=20261113_motion01" />
   <style>
     /* 시험지 밑줄: 보라색 선 절대 방지, 시험지 표준 진회색 밑줄 강제 */
@@ -60,7 +60,7 @@
 
   <!-- Cloud data is loaded before the application UI is rendered. -->
   <div id="initialLoadingSkeleton" class="initial-loading-skeleton" role="status" aria-label="데이터를 준비하고 있습니다">
-    <div class="initial-loading-skeleton__header" aria-hidden="true"><div class="loading-brand"><img src="pace-symbol.svg" alt="" width="32" height="32"><strong>PACE</strong></div><div class="loading-header-action"><div class="loading-button skeleton-shimmer"></div></div></div>
+    <div class="initial-loading-skeleton__header"><div class="loading-brand" aria-hidden="true"><img src="pace-symbol.svg" alt="" width="32" height="32"><strong>PACE</strong></div><p id="initialLoadingMessage" class="initial-loading-skeleton__message" hidden></p><div class="loading-header-action" aria-hidden="true"><div class="loading-button skeleton-shimmer"></div></div></div>
     <div class="initial-loading-skeleton__content" aria-hidden="true">
       <div class="loading-login"><div class="loading-intro dark"><div class="loading-eyebrow skeleton-shimmer"></div><div class="loading-title skeleton-shimmer"></div><div class="loading-title short skeleton-shimmer"></div><div class="loading-line skeleton-shimmer"></div><div class="loading-line skeleton-shimmer"></div><div class="loading-intro-foot"><div class="loading-eyebrow skeleton-shimmer"></div></div></div><div class="loading-form"><div class="loading-eyebrow skeleton-shimmer"></div><div class="loading-title skeleton-shimmer"></div><div class="loading-line skeleton-shimmer"></div><div class="loading-fields"><div class="loading-eyebrow skeleton-shimmer"></div><div class="loading-field skeleton-shimmer"></div><div class="loading-eyebrow skeleton-shimmer"></div><div class="loading-field skeleton-shimmer"></div><div class="loading-button skeleton-shimmer"></div></div></div></div>
       <div class="loading-student"><div class="loading-heading"><div><div class="loading-eyebrow skeleton-shimmer"></div><div class="loading-title skeleton-shimmer"></div><div class="loading-title short skeleton-shimmer"></div><div class="loading-line skeleton-shimmer"></div><div class="loading-profile skeleton-shimmer"></div></div><div class="loading-date"><div class="loading-line skeleton-shimmer"></div><div class="loading-eyebrow skeleton-shimmer"></div></div></div><div class="loading-panels"><div class="loading-panel dark"><div class="loading-eyebrow skeleton-shimmer"></div><div class="loading-panel-copy"><div class="loading-title skeleton-shimmer"></div><div class="loading-line skeleton-shimmer"></div></div><div class="loading-button skeleton-shimmer"></div></div><div class="loading-panel sage"><div class="loading-eyebrow skeleton-shimmer"></div><div class="loading-panel-copy"><div class="loading-title skeleton-shimmer"></div><div class="loading-line skeleton-shimmer"></div></div><div class="loading-button skeleton-shimmer"></div></div></div><div class="loading-toolbar"><div class="loading-button skeleton-shimmer"></div><div class="loading-line skeleton-shimmer"></div></div><div class="loading-calendar"><div class="loading-toolbar"><div class="loading-month skeleton-shimmer"></div><div class="loading-profile skeleton-shimmer"></div></div><div class="loading-weekdays"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div><div class="loading-calendar-grid"><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div><div class="loading-event skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div><div class="loading-event skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div><div class="loading-event skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div><div class="loading-event skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div><div class="loading-event skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div><div class="loading-event skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div><div class="loading-event skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div><div class="loading-event skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div><div class="loading-event skeleton-shimmer"></div></div><div><div class="loading-day skeleton-shimmer"></div></div></div></div></div>
@@ -228,28 +228,28 @@
         <div class="text-center mb-6">
           <span class="pace-kicker">WELCOME TO PACE</span><h2 class="pace-login-title">나의 페이스로<br>시작해볼까요.</h2>
         </div>
-        <form onsubmit="App.handleLogin(event); return false;" class="space-y-4">
+        <form onsubmit="App.handleLogin(event); return false;" class="space-y-4" aria-busy="true">
           <div>
             <label for="studentLoginId" class="block text-xs font-bold text-slate-600 mb-1.5">아이디</label>
-            <input type="text" id="studentLoginId" autocomplete="username" autofocus placeholder="아이디를 입력하세요" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('studentLoginPassword')?.focus();}" class="w-full py-3 px-4 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900" required />
+            <input type="text" id="studentLoginId" autocomplete="username" autofocus placeholder="아이디를 입력하세요" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('studentLoginPassword')?.focus();}" class="w-full py-3 px-4 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900" required disabled />
           </div>
           <div>
             <label for="studentLoginPassword" class="block text-xs font-bold text-slate-600 mb-1.5">비밀번호</label>
             <div class="pace-login-password">
-              <input type="password" id="studentLoginPassword" maxlength="64" autocomplete="current-password" placeholder="비밀번호를 입력하세요" class="w-full py-3 px-4 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900" required />
-              <button type="button" id="loginPasswordToggle" class="pace-password-toggle" aria-label="비밀번호 표시" aria-controls="studentLoginPassword" aria-pressed="false" onclick="PaceAuth.toggleLoginPassword()"><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
+              <input type="password" id="studentLoginPassword" maxlength="64" autocomplete="current-password" placeholder="비밀번호를 입력하세요" class="w-full py-3 px-4 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900" required disabled />
+              <button type="button" id="loginPasswordToggle" class="pace-password-toggle" aria-label="비밀번호 표시" aria-controls="studentLoginPassword" aria-pressed="false" onclick="PaceAuth.toggleLoginPassword()" disabled><i class="fa-solid fa-eye" aria-hidden="true"></i></button>
             </div>
           </div>
-          <label class="pace-remember"><input type="checkbox" id="rememberLogin"> <span>자동 로그인</span></label>
+          <label class="pace-remember"><input type="checkbox" id="rememberLogin" disabled> <span>자동 로그인</span></label>
           <p id="loginError" class="hidden text-xs text-rose-600 font-semibold">
             <i class="fa-solid fa-circle-exclamation mr-1"></i>아이디 또는 비밀번호를 확인해주세요.
           </p>
-          <button type="submit" class="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition shadow-md shadow-indigo-200 flex items-center justify-center gap-2">
+          <button type="submit" class="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition shadow-md shadow-indigo-200 flex items-center justify-center gap-2" disabled>
             <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
             <span role="status" aria-live="polite">로그인</span>
           </button>
         </form>
-        <button type="button" class="pace-signup-link" onclick="PaceAuth.open()">처음이신가요? <strong>회원가입</strong><span aria-hidden="true"> ↗</span></button>
+        <button type="button" class="pace-signup-link" onclick="PaceAuth.open()" disabled>처음이신가요? <strong>회원가입</strong><span aria-hidden="true"> ↗</span></button>
       </div>
     </section>
     <section id="signupView" class="pace-signup" hidden>
@@ -1294,7 +1294,7 @@
 
   <footer class="mt-auto border-t border-slate-200 bg-white/70 py-6 text-center text-xs text-slate-400">
     <div class="max-w-7xl mx-auto px-4 flex items-center justify-center">
-      <p>v2.1.21</p>
+      <p>v2.1.22</p>
     </div>
   </footer>
 
@@ -4271,7 +4271,7 @@
 <script src="data.js?v=20261112_student_delete01"></script>
 <script src="grammar_store.js?v=20261113_relative01"></script>
 <script src="weekly_review_store.js?v=20261109_delete01"></script>
-<script src="app.js?v=20261113_motion01"></script>
+<script src="app.js?v=20261124_auto_login01"></script>
 <script src="grammar.js?v=20261113_motion01"></script>
 
 <script src="weekly_review.js?v=20261113_motion01"></script>
@@ -11304,8 +11304,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <script src="pace.js?v=20261107_pace02"></script>
-<script src="auth.js?v=20261113_motion01"></script>
+<script src="auth.js?v=20261124_auto_login01"></script>
 <script src="vocab-sync.js?v=20261109_calendar01"></script>
-<script src="auth-data.js?v=20261108_03"></script>
+<script src="auth-data.js?v=20261124_auto_login01"></script>
 </body>
 </html>

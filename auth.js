@@ -95,9 +95,18 @@
       if (loading) form.setAttribute('aria-busy', 'true');
       else form.removeAttribute('aria-busy');
     },
+    setLoginRestorePending(pending) {
+      this.loginRestorePending = pending;
+      const form = document.querySelector('#landingView form');
+      for (const control of document.querySelectorAll('#landingView form input, #landingView form button, #landingView .pace-signup-link')) {
+        control.disabled = pending;
+      }
+      if (pending) form.setAttribute('aria-busy', 'true');
+      else form.removeAttribute('aria-busy');
+    },
     async login(event) {
       event?.preventDefault();
-      if (this.busy) return;
+      if (this.busy || this.loginRestorePending) return;
       const error = document.getElementById('loginError');
       this.busy = true; this.setLoginLoading(true); error.classList.add('hidden');
       let authenticated = false;
@@ -117,13 +126,13 @@
       }
       finally { this.managed = false; this.busy = false; this.setLoginLoading(false); }
     },
-    async enter(showHome = true) {
-      if (showHome) App.showLoadingSkeleton();
+    async enter(showHome = true, loadingMessage = '') {
+      if (showHome) App.showLoadingSkeleton('login', loadingMessage);
       try {
         this.clearData();
         await this.identity(this.auth.currentUser);
         if (!this.admin && !this.member) { this.open(2); return; }
-        if (showHome) App.showLoadingSkeleton(this.admin ? 'admin' : 'student');
+        if (showHome) App.showLoadingSkeleton(this.admin ? 'admin' : 'student', loadingMessage);
         await this.loadData();
         if (showHome) this.home();
         this.watchMembership();

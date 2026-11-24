@@ -16,11 +16,24 @@ const server=http.createServer((req,res)=>{
   const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',r=>r.request().url().startsWith('http://127.0.0.1:')?r.continue():r.abort());
-  await page.goto(`http://127.0.0.1:${server.address().port}`);
+   await page.goto(`http://127.0.0.1:${server.address().port}`);
+   const loginControls = page.locator('#landingView form input, #landingView form button, #landingView .pace-signup-link');
+   async function assertLoginLocked(locked) {
+     assert.equal(await loginControls.count(), 6);
+     assert.deepEqual(await Promise.all((await loginControls.all()).map(control => control.isDisabled())), Array(6).fill(locked));
+   }
+   await assertLoginLocked(true);
   await page.addScriptTag({content:fs.readFileSync(process.env.TAILWIND_SCRIPT_PATH || '/private/tmp/yem-tailwind-test.js','utf8')+'\n'+inline.find(s=>s.includes('tailwind.config'))});
    for(const file of ['weekly_review_logic.js','grammar_data.js','grammar_paper.js','exam_mode.js','exam_motion.js','data.js','grammar_store.js','weekly_review_store.js','app.js','grammar.js','weekly_review.js','pace.js','auth.js','auth-data.js']) await page.addScriptTag({content:fs.readFileSync(path.join(root,file),'utf8')});
-   await page.evaluate(()=>{App.init();App.finishInitialLoading();});
-   await page.waitForFunction(()=>document.getElementById('initialLoadingSkeleton').hidden);
+    await page.evaluate(async()=>{
+      App.init();
+      PaceAuth.ready=async function(){this.auth={currentUser:null};this.raw={};this.f={onAuthStateChanged:(auth,listener)=>{window.reportSession=uid=>{auth.currentUser=uid?{uid}:null;return listener(auth.currentUser);};}};};
+      await PaceAuth.boot();
+      await reportSession(null);
+    });
+    await page.waitForFunction(()=>document.getElementById('initialLoadingSkeleton').hidden);
+    await assertLoginLocked(false);
+    assert.equal(await page.getByText('로그인 상태 확인 중…',{exact:true}).isVisible(),false);
   assert.equal(await page.locator('#rememberLogin').isChecked(),false);
   assert.equal(await page.getByText('비밀번호를 잊으셨나요? 관리자에게 문의해주세요.',{exact:true}).count(),0);
   await page.locator('#studentLoginPassword').fill('password123');
@@ -144,13 +157,57 @@ const server=http.createServer((req,res)=>{
    await page.evaluate(()=>App.finishInitialLoading());
    await page.waitForFunction(()=>document.getElementById('initialLoadingSkeleton').hidden);
    assert.equal(await skeleton.count(),1);
-   // Restoring a session uses data loading directly, with no button login phase.
-   await page.evaluate(()=>{window.loginRole='admin';window.restoring=PaceAuth.enter();});
-   await page.waitForFunction(()=>document.getElementById('initialLoadingSkeleton').classList.contains('initial-loading-skeleton--admin'));
-   assert.equal(await skeleton.isVisible(),true);
-   await page.evaluate(async()=>{resolveData();await window.restoring;});
-   await skeleton.waitFor({state:'hidden'});
-   assert.equal(await skeleton.isVisible(),false);
+    // A delayed initial check shows its own status; the saved account gets a distinct status during data loading.
+    await page.clock.install({time:new Date('2026-11-24T00:00:00Z')});
+    await page.clock.pauseAt(new Date('2026-11-24T00:00:01Z'));
+    const checking=page.getByText('로그인 상태 확인 중…',{exact:true});
+    const restoring=page.getByText('자동 로그인 중…',{exact:true});
+    await page.evaluate(()=>{
+      PaceAuth.f.onAuthStateChanged=(auth,listener)=>{window.reportSession=uid=>{auth.currentUser=uid?{uid}:null;return listener(auth.currentUser);};};
+      window.beginRestore=async(role)=>{await prepareLogin(role); await PaceAuth.boot();};
+      return beginRestore('admin');
+    });
+    await assertLoginLocked(true);
+    await page.clock.runFor(299);
+    assert.equal(await checking.isVisible(),false);
+    await page.clock.runFor(1);
+    assert.equal(await checking.isVisible(),true);
+    await page.evaluate(()=>{window.restoreAttempt=reportSession('test-admin');});
+    await page.waitForFunction(()=>document.getElementById('initialLoadingSkeleton').classList.contains('initial-loading-skeleton--admin'));
+    assert.equal(await checking.isVisible(),false);
+    assert.equal(await restoring.isVisible(),true);
+    await assertLoginLocked(true);
+    await page.evaluate(async()=>{resolveData();await restoreAttempt;});
+    await page.clock.runFor(220);
+    await skeleton.waitFor({state:'hidden'});
+    assert.equal(await page.locator('#adminDashboardView').isVisible(),true);
+
+    // Quickly restored sessions bypass the checking label and failed data loading unlocks manual login.
+    await page.evaluate(async()=>{await beginRestore('student');window.restoreAttempt=reportSession('test-student');});
+    assert.equal(await restoring.isVisible(),true);
+    await page.clock.runFor(300);
+    assert.equal(await checking.isVisible(),false);
+    await page.evaluate(async()=>{rejectData();await restoreAttempt;});
+    await page.clock.runFor(220);
+    assert.equal(await page.locator('#landingView').isVisible(),true);
+    assert.match(await page.locator('#loginError').innerText(),/데이터 연결 실패/);
+    await assertLoginLocked(false);
+
+    await page.evaluate(async()=>{await beginRestore('none');await reportSession('unlinked');});
+    await page.clock.runFor(220);
+    assert.equal(await page.locator('#inviteCode').isVisible(),true);
+
+    await page.evaluate(async()=>{
+      await prepareLogin();
+      PaceAuth.ready=async()=>{throw Error('인증 서버에 연결하지 못했어요.');};
+      await PaceAuth.boot();
+      PaceAuth.ready=async()=>{};
+    });
+    await page.clock.runFor(300);
+    assert.equal(await checking.isVisible(),false);
+    assert.match(await page.locator('#loginError').innerText(),/인증 서버에 연결하지 못했어요/);
+    await assertLoginLocked(false);
+    await page.clock.resume();
    await page.emulateMedia({reducedMotion:'no-preference'});
    await page.evaluate(()=>prepareLogin());await submit.click();
    assert.equal(await submit.locator('i').evaluate(e=>getComputedStyle(e).animationName),'pace-login-spin');
