@@ -50,6 +50,7 @@
     },
     ref(collection, id) { return this.raw.doc(this.db, collection, String(id)); },
     clearData() {
+      root.AssessmentPdf?.clear();
       root.ExamPresentation?.cancelPending();
       root.ExamMotionPaper?.close();
       this.generation = (this.generation || 0) + 1;
