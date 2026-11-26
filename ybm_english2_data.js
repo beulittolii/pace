@@ -1,6 +1,8 @@
 /**
- * YBM(박준언) 공통영어 2 교과서 실제 본문 100% 원문 (교과서 들여쓰기 기준 소문단 전체 데이터셋)
- * Lesson 1 (10개 문단, 45문장) & Lesson 2 (12개 문단, 70문장) 완비
+ * YBM(박준언) 공통영어 2 본문암기 지문 및 이전 시험 참조용 지문.
+ * Lesson 3·4 영문 출처 (Reading):
+ * https://englishtutortv.com/wp-content/uploads/2025/07/Lesson-3-Rise-Above-Challenges.pdf
+ * https://englishtutortv.com/wp-content/uploads/2025/07/Lesson-4-Creative-Ideas-for-a-Better-World.pdf
  */
 const YBM_ENGLISH2_PASSAGES = [
   {
@@ -975,6 +977,716 @@ const YBM_ENGLISH2_PASSAGES = [
       {
         "en": "Her inspiring story reminds us that breaking barriers requires courage, determination, and the willingness to challenge injustice.",
         "ko": "그녀의 감동적인 이야기는 장벽을 허무는 데에는 용기, 결단력, 그리고 불의에 도전하려는 의지가 필요하다는 것을 우리에게 상기시켜 준다."
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l3_resilience_p1",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 3,
+    "lessonTitle": "Lesson 3. Rise Above Challenges",
+    "isMainReading": true,
+    "partTitle": "3과 1문단 (2문장)",
+    "sentences": [
+      {
+        "en": "This week’s topic in the City Wellness Center Newsletter is resilience, or “the power to overcome.”",
+        "ko": "시티 웰니스 센터 소식지의 이번 주 주제는 회복탄력성, 즉 ‘극복하는 힘’이다."
+      },
+      {
+        "en": "Julia Hone, a famous doctor, tells us how we can deal with difficult times by cultivating our inner strength.",
+        "ko": "유명한 의사 줄리아 혼은 내면의 힘을 길러 어려운 시기를 어떻게 헤쳐 나갈 수 있는지 알려 준다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "간접의문문 how we can deal with ~ / by + 동명사"
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l3_resilience_p2",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 3,
+    "lessonTitle": "Lesson 3. Rise Above Challenges",
+    "isMainReading": true,
+    "partTitle": "3과 2문단 (8문장)",
+    "sentences": [
+      {
+        "en": "No life is free from problems.",
+        "ko": "문제가 없는 삶은 없다."
+      },
+      {
+        "en": "Whatever life path we choose, we all experience adversity.",
+        "ko": "어떤 삶의 길을 선택하든 우리는 모두 역경을 겪는다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "복합관계형용사 Whatever가 이끄는 양보절"
+      },
+      {
+        "en": "This can take the form of illness, accidents, failure in exams, family and relationship issues, or other stresses.",
+        "ko": "이는 질병, 사고, 시험에서의 실패, 가족 및 대인관계 문제 또는 다른 스트레스의 형태로 나타날 수 있다."
+      },
+      {
+        "en": "To cope, we all need the ability to overcome difficulties, which is known as resilience.",
+        "ko": "이에 대처하려면 우리 모두 어려움을 극복하는 능력이 필요한데, 이를 회복탄력성이라고 한다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "to부정사의 형용사적 용법 / 관계대명사 which의 계속적 용법"
+      },
+      {
+        "en": "Resilience means springing back, just like a bouncy ball after hitting the ground.",
+        "ko": "회복탄력성이란 탱탱볼이 땅에 부딪힌 뒤 다시 튀어 오르듯 되튀어 오르는 것을 뜻한다."
+      },
+      {
+        "en": "If you are resilient, you can bounce back and recover quickly from the hard times you experience.",
+        "ko": "회복탄력성이 있으면 자신이 겪는 힘든 시기를 이겨 내고 빠르게 회복할 수 있다."
+      },
+      {
+        "en": "Furthermore, you learn and grow from adversity.",
+        "ko": "더 나아가 역경을 통해 배우고 성장한다."
+      },
+      {
+        "en": "So, resilience is the ability to handle, recover from, and benefit from difficult life events.",
+        "ko": "따라서 회복탄력성이란 삶의 어려운 일을 다루고, 그로부터 회복하며, 거기에서 이로움을 얻는 능력이다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "handle, recover from, and benefit from의 병렬 구조"
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l3_resilience_p3",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 3,
+    "lessonTitle": "Lesson 3. Rise Above Challenges",
+    "isMainReading": true,
+    "partTitle": "3과 3문단 (3문장)",
+    "sentences": [
+      {
+        "en": "There are countless stories of successful people who not only survived adversity but used it as a stepping stone to growth.",
+        "ko": "역경을 이겨 냈을 뿐 아니라 그것을 성장의 발판으로 삼은 성공한 사람들의 이야기는 무수히 많다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "주격 관계대명사 who / not only A but B"
+      },
+      {
+        "en": "Fairy tale writer Hans Andersen said that his childhood poverty, the early loss of his father, and his experience of being disrespected were the sources for his most popular stories.",
+        "ko": "동화 작가 한스 안데르센은 어린 시절의 가난, 일찍 아버지를 여읜 일, 그리고 무시당한 경험이 자신의 가장 인기 있는 이야기들의 원천이었다고 말했다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "that절 안의 주어 병렬 구조 / 동명사의 수동형 being disrespected"
+      },
+      {
+        "en": "“The hardship was a real blessing that inspired me to write stories like The Little Match Girl, The Snow Queen, and The Ugly Duckling.”",
+        "ko": "“그 고난은 제가 『성냥팔이 소녀』, 『눈의 여왕』, 『미운 오리 새끼』 같은 이야기를 쓰도록 영감을 준 진정한 축복이었습니다.”"
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l3_resilience_p4",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 3,
+    "lessonTitle": "Lesson 3. Rise Above Challenges",
+    "isMainReading": true,
+    "partTitle": "3과 4문단 (7문장)",
+    "sentences": [
+      {
+        "en": "Athlete Aimee Mullins also saw her challenges as an opportunity.",
+        "ko": "운동선수 에이미 멀린스 역시 자신이 겪은 어려움을 기회로 여겼다."
+      },
+      {
+        "en": "She was born with a medical condition that resulted in losing both legs beneath the knee to surgery.",
+        "ko": "그녀는 선천적인 질환으로 인해 수술로 양쪽 다리의 무릎 아래 부분을 잃었다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "주격 관계대명사 that / result in + 동명사"
+      },
+      {
+        "en": "She competed against athletes without disabilities in a national competition and participated in the Paralympics in 1996.",
+        "ko": "그녀는 전국 대회에서 장애가 없는 선수들과 겨루었고 1996년 패럴림픽에 참가했다."
+      },
+      {
+        "en": "Her career also includes modeling, acting, and public speaking.",
+        "ko": "그녀는 모델, 배우, 대중 연설가로도 활동해 왔다."
+      },
+      {
+        "en": "She says her physical condition is not a disability but the very thing that opened the door for her amazing potential.",
+        "ko": "그녀는 자신의 신체 상태가 장애가 아니라 놀라운 잠재력을 펼칠 길을 열어 준 바로 그것이라고 말한다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "not A but B / 강조의 the very / 주격 관계대명사 that"
+      },
+      {
+        "en": "Both people succeeded not “despite” adversity but thanks to it.",
+        "ko": "두 사람은 역경에도 ‘불구하고’ 성공한 것이 아니라 역경 덕분에 성공했다."
+      },
+      {
+        "en": "This is the real bouncing back.",
+        "ko": "이것이 진정으로 다시 일어서는 것이다."
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l3_resilience_p5",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 3,
+    "lessonTitle": "Lesson 3. Rise Above Challenges",
+    "isMainReading": true,
+    "partTitle": "3과 5문단 (6문장)",
+    "sentences": [
+      {
+        "en": "You might think “Hey, these are exceptional people.”",
+        "ko": "“아니, 이 사람들은 특별하잖아.”라고 생각할지도 모른다."
+      },
+      {
+        "en": "However, we are all born with the potential for resilience.",
+        "ko": "그러나 우리 모두는 회복탄력성의 잠재력을 타고난다."
+      },
+      {
+        "en": "Just like these people, we all can develop the strength to quickly recover from a crisis that could otherwise cause lasting damage to our mental health.",
+        "ko": "이 사람들처럼 우리 모두도, 그렇지 않으면 정신 건강에 오래가는 손상을 입힐 수 있는 위기에서 빠르게 회복할 힘을 기를 수 있다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "to부정사의 형용사적 용법 / otherwise가 나타내는 가정"
+      },
+      {
+        "en": "The good news is that resilience is like a muscle.",
+        "ko": "다행스러운 점은 회복탄력성이 근육과 같다는 것이다."
+      },
+      {
+        "en": "You can build it up through practice, by developing thoughts, behaviors, and habits that allow you to recover from painful or stressful events.",
+        "ko": "고통스럽거나 스트레스를 주는 일에서 회복하도록 돕는 생각, 행동, 습관을 기르며 연습하면 이 힘을 키울 수 있다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "by + 동명사 / 주격 관계대명사 that / allow + 목적어 + to부정사"
+      },
+      {
+        "en": "Here are three basic strategies to build up this “resilience muscle.”",
+        "ko": "이 ‘회복탄력성 근육’을 키우는 세 가지 기본 전략이 있다."
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l3_resilience_p6",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 3,
+    "lessonTitle": "Lesson 3. Rise Above Challenges",
+    "isMainReading": true,
+    "partTitle": "3과 6문단 (5문장)",
+    "sentences": [
+      {
+        "en": "First, accept and respect adversity as a natural part of life.",
+        "ko": "첫째, 역경을 삶의 자연스러운 일부로 받아들이고 존중하라."
+      },
+      {
+        "en": "This doesn’t mean being passive, but understanding that some changes in life can cause suffering or stress.",
+        "ko": "이는 수동적으로 있으라는 뜻이 아니라, 삶의 어떤 변화는 고통이나 스트레스를 일으킬 수 있음을 이해하라는 뜻이다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "not A but B의 동명사 병렬 구조 / 명사절 접속사 that"
+      },
+      {
+        "en": "Then, instead of feeling singled out and thinking, “Why me?”, you can face whatever happens and focus on what you can change, not what you can’t.",
+        "ko": "그러면 나만 지목된 듯 느끼며 “왜 나만?”이라고 생각하는 대신, 어떤 일이든 마주하고 바꿀 수 없는 것이 아니라 바꿀 수 있는 것에 집중할 수 있다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "instead of + 동명사 / 복합관계대명사 whatever / 관계대명사 what"
+      },
+      {
+        "en": "Embracing challenges and unexpected obstacles in your life can help you confront them as a learning process.",
+        "ko": "삶에서 도전과 뜻밖의 장애물을 받아들이면 그것을 배움의 과정으로 마주하는 데 도움이 될 수 있다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "동명사 주어 / help + 목적어 + 동사원형"
+      },
+      {
+        "en": "Think of all the success stories that could never have happened without adversity!",
+        "ko": "역경 없이는 결코 일어나지 못했을 모든 성공 이야기를 생각해 보라!"
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l3_resilience_p7",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 3,
+    "lessonTitle": "Lesson 3. Rise Above Challenges",
+    "isMainReading": true,
+    "partTitle": "3과 7문단 (5문장)",
+    "sentences": [
+      {
+        "en": "Second, have “me time,” that is, personal time to look after yourself.",
+        "ko": "둘째, ‘나만의 시간’, 즉 자신을 돌보는 개인 시간을 가져라."
+      },
+      {
+        "en": "Take a break and be in the present moment, neither regretting the past nor worrying about the future.",
+        "ko": "잠시 쉬면서 과거를 후회하지도 미래를 걱정하지도 말고 지금 이 순간에 머물러라.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "명령문의 병렬 구조 / neither A nor B"
+      },
+      {
+        "en": "Walk, meditate, write, draw, listen to music, or exercise.",
+        "ko": "산책하거나 명상하거나 글을 쓰거나 그림을 그리거나 음악을 듣거나 운동하라."
+      },
+      {
+        "en": "If you don’t know where to start, the STOP technique can be a great meditative technique.",
+        "ko": "어디서 시작할지 모르겠다면 STOP 기법이 훌륭한 명상 기법이 될 수 있다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "의문사 + to부정사 where to start"
+      },
+      {
+        "en": "It works like this.",
+        "ko": "방법은 다음과 같다."
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l3_resilience_p8",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 3,
+    "lessonTitle": "Lesson 3. Rise Above Challenges",
+    "isMainReading": true,
+    "partTitle": "3과 STOP 기법 (6문장)",
+    "sentences": [
+      {
+        "en": "Stop whatever you are doing.",
+        "ko": "하던 일이 무엇이든 멈춰라."
+      },
+      {
+        "en": "Take a few deep breaths.",
+        "ko": "심호흡을 몇 번 하라."
+      },
+      {
+        "en": "Observe your emotions and thoughts as they are, not judging them as good or bad.",
+        "ko": "감정과 생각을 좋거나 나쁘다고 판단하지 말고 있는 그대로 관찰하라.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "as they are / 부정 분사구문 not judging"
+      },
+      {
+        "en": "Proceed with what you were doing.",
+        "ko": "하던 일을 계속하라."
+      },
+      {
+        "en": "Or start something different based on what you observed.",
+        "ko": "또는 관찰한 것을 바탕으로 다른 일을 시작하라.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "과거분사구 based on ~ / 관계대명사 what"
+      },
+      {
+        "en": "Now go forward with your life.",
+        "ko": "이제 삶을 계속 이어 가라."
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l3_resilience_p9",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 3,
+    "lessonTitle": "Lesson 3. Rise Above Challenges",
+    "isMainReading": true,
+    "partTitle": "3과 9문단 (5문장)",
+    "sentences": [
+      {
+        "en": "Third, be connected.",
+        "ko": "셋째, 사람들과 연결되어 있어라."
+      },
+      {
+        "en": "Allow yourself to ask for help from people whom you can trust, such as friends, family members, or counselors.",
+        "ko": "친구, 가족, 상담사처럼 신뢰할 수 있는 사람들에게 도움을 요청해도 된다고 스스로에게 허락하라.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "allow + 목적어 + to부정사 / 목적격 관계대명사 whom"
+      },
+      {
+        "en": "Talking about your issues with someone can help you see your situation with more clarity and respond to it with more strength.",
+        "ko": "누군가와 자신의 문제를 이야기하면 상황을 더 명확하게 보고 더 큰 힘으로 대처하는 데 도움이 될 수 있다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "동명사 주어 / help + 목적어 + 동사원형"
+      },
+      {
+        "en": "Good communication helps resilience.",
+        "ko": "원활한 소통은 회복탄력성에 도움이 된다."
+      },
+      {
+        "en": "This is the reason why resilient people tend to create good support networks.",
+        "ko": "이것이 회복탄력성이 높은 사람들이 좋은 지원망을 형성하는 경향이 있는 이유다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "관계부사 why / tend to + 동사원형"
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l3_resilience_p10",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 3,
+    "lessonTitle": "Lesson 3. Rise Above Challenges",
+    "isMainReading": true,
+    "partTitle": "3과 10문단 (6문장)",
+    "sentences": [
+      {
+        "en": "I am not saying that these strategies are easy or remove all stress and suffering.",
+        "ko": "이 전략들이 쉽거나 모든 스트레스와 고통을 없애 준다는 말은 아니다."
+      },
+      {
+        "en": "Still, I urge you to practice them whenever you can, particularly when you are under stress.",
+        "ko": "그래도 가능할 때마다, 특히 스트레스를 받을 때 이 전략들을 실천해 보기를 권한다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "urge + 목적어 + to부정사 / 복합관계부사 whenever"
+      },
+      {
+        "en": "Remember that there is no better time to build your “resilience muscle” than the moment when you are in the middle of adversity and uncertainty.",
+        "ko": "역경과 불확실성 한가운데에 있을 때보다 ‘회복탄력성 근육’을 키우기에 더 좋은 때는 없음을 기억하라.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "부정어와 비교급을 이용한 최상급 의미 / 관계부사 when"
+      },
+      {
+        "en": "Practicing resilience during tough times helps you endure and grow stronger.",
+        "ko": "어려운 시기에 회복탄력성을 연습하면 견디고 더 강해지는 데 도움이 된다."
+      },
+      {
+        "en": "However, you can also apply these strategies to everyday small stresses or minor challenges.",
+        "ko": "하지만 이 전략들을 일상의 작은 스트레스나 사소한 어려움에도 적용할 수 있다."
+      },
+      {
+        "en": "Then you will gradually become more able to deal with big ones.",
+        "ko": "그러면 점차 더 큰 어려움에 대처할 수 있게 될 것이다."
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l3_resilience_p11",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 3,
+    "lessonTitle": "Lesson 3. Rise Above Challenges",
+    "isMainReading": true,
+    "partTitle": "3과 11문단 (2문장)",
+    "sentences": [
+      {
+        "en": "Resilient people tend to be happier and more fulfilled because they are less afraid of failing or challenges.",
+        "ko": "회복탄력성이 높은 사람들은 실패나 도전을 덜 두려워하기 때문에 더 행복하고 더 큰 만족감을 느끼는 경향이 있다."
+      },
+      {
+        "en": "So, building resilience is the key not only to overcoming adversity but also to living a happy life.",
+        "ko": "따라서 회복탄력성을 기르는 것은 역경을 극복하는 데뿐 아니라 행복한 삶을 사는 데도 핵심이다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "동명사 주어 / not only A but also B / 전치사 to"
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l4_science_for_all_p1",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 4,
+    "lessonTitle": "Lesson 4. Creative Ideas for a Better World",
+    "isMainReading": true,
+    "partTitle": "4과 1문단 (6문장)",
+    "sentences": [
+      {
+        "en": "Microscopes have been an essential tool for science for over 400 years.",
+        "ko": "현미경은 400년 넘게 과학에 필수적인 도구였다."
+      },
+      {
+        "en": "If microscopes had not been invented, we might not have discovered bacteria or the microscopic structures of living organisms.",
+        "ko": "현미경이 발명되지 않았다면, 우리는 세균이나 생물의 미세 구조를 발견하지 못했을지도 모른다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "가정법 과거완료 / If절의 수동태"
+      },
+      {
+        "en": "In certain areas of the world, however, even basic light microscopes are not accessible due to their cost.",
+        "ko": "그러나 세계의 일부 지역에서는 비용 때문에 기본적인 광학 현미경조차 이용하기 어렵다."
+      },
+      {
+        "en": "It was the Foldscope that Manu Prakash and Jim Cybulski presented as a solution to the problem.",
+        "ko": "마누 프라카시와 짐 시불스키가 이 문제의 해결책으로 제시한 것은 바로 폴드스코프였다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "It was ~ that 강조구문"
+      },
+      {
+        "en": "The Foldscope, a paper microscope they invented, achieved powerful magnification, and cost less than a dollar in parts.",
+        "ko": "그들이 발명한 종이 현미경인 폴드스코프는 높은 배율을 구현했고 부품 비용은 1달러 미만이었다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "동격의 명사구 / 목적격 관계대명사 생략"
+      },
+      {
+        "en": "“The idea has been to make science accessible to everybody,” said Prakash.",
+        "ko": "프라카시는 “목표는 누구나 과학에 접근할 수 있게 하는 것이었습니다.”라고 말했다."
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l4_science_for_all_p2",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 4,
+    "lessonTitle": "Lesson 4. Creative Ideas for a Better World",
+    "isMainReading": true,
+    "partTitle": "4과 2문단 (3문장)",
+    "sentences": [
+      {
+        "en": "While researching methods for identifying infectious diseases in Thailand in 2011, Prakash came across an expensive microscope that was meant for malaria testing but was unused.",
+        "ko": "2011년 태국에서 감염병을 식별하는 방법을 연구하던 프라카시는 말라리아 검사용이었지만 쓰이지 않고 있던 값비싼 현미경을 우연히 발견했다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "While + 분사구문 / 주격 관계대명사 that / 수동태의 병렬 구조"
+      },
+      {
+        "en": "Malaria takes over half a million lives annually, so early diagnosis is crucial in preventing its spread.",
+        "ko": "말라리아는 해마다 50만 명 넘는 목숨을 앗아가므로, 확산을 막으려면 조기 진단이 매우 중요하다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "in + 동명사"
+      },
+      {
+        "en": "But then, why was the microscope sitting unused?",
+        "ko": "그런데 왜 그 현미경은 쓰이지 않은 채 놓여 있었을까?"
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l4_science_for_all_p3",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 4,
+    "lessonTitle": "Lesson 4. Creative Ideas for a Better World",
+    "isMainReading": true,
+    "partTitle": "4과 3문단 (6문장)",
+    "sentences": [
+      {
+        "en": "Prakash found that there were multiple reasons.",
+        "ko": "프라카시는 여러 이유가 있다는 것을 알아냈다."
+      },
+      {
+        "en": "The microscope was bulky and awkward to transport, required training to operate, and was difficult to maintain.",
+        "ko": "그 현미경은 부피가 커서 옮기기 불편했고, 사용하려면 훈련이 필요했으며, 유지 관리도 어려웠다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "동사의 병렬 구조 / 형용사 뒤의 to부정사"
+      },
+      {
+        "en": "As it was a delicate and expensive instrument, even trained lab workers felt nervous about using it.",
+        "ko": "정교하고 값비싼 기기였기 때문에 훈련받은 실험실 직원들조차 그것을 사용하는 데 부담을 느꼈다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "이유를 나타내는 접속사 As / about + 동명사"
+      },
+      {
+        "en": "Prakash began wondering.",
+        "ko": "프라카시는 생각하기 시작했다."
+      },
+      {
+        "en": "A cheap, strong microscope could save thousands of lives.",
+        "ko": "값싸고 튼튼한 현미경이라면 수천 명의 생명을 구할 수 있을 것이다."
+      },
+      {
+        "en": "After he returned to Stanford University, where he was a professor, he started to reflect on the idea.",
+        "ko": "그는 자신이 교수로 있던 스탠퍼드 대학교로 돌아간 뒤 그 아이디어를 곰곰이 생각하기 시작했다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "관계부사 where의 계속적 용법"
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l4_science_for_all_p4",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 4,
+    "lessonTitle": "Lesson 4. Creative Ideas for a Better World",
+    "isMainReading": true,
+    "partTitle": "4과 4문단 (3문장)",
+    "sentences": [
+      {
+        "en": "It was not until he met Jim Cybulski that his idea of an affordable and accessible microscope began to take shape.",
+        "ko": "그가 짐 시불스키를 만나고 나서야 저렴하고 누구나 이용할 수 있는 현미경에 대한 구상이 구체화되기 시작했다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "It was not until ~ that 강조구문"
+      },
+      {
+        "en": "A graduate student at Stanford, Cybulski was looking for ways to apply his engineering background to make a difference in the real world.",
+        "ko": "스탠퍼드의 대학원생인 시불스키는 자신의 공학 지식을 활용해 현실에 변화를 일으킬 방법을 찾고 있었다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "동격의 명사구 / to부정사의 형용사적 용법과 부사적 용법"
+      },
+      {
+        "en": "After hearing Prakash’s vision, Cybulski quickly recognized its potential and was eager to contribute.",
+        "ko": "프라카시의 구상을 들은 시불스키는 곧바로 그 잠재력을 알아보고 기꺼이 힘을 보태고자 했다."
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l4_science_for_all_p5",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 4,
+    "lessonTitle": "Lesson 4. Creative Ideas for a Better World",
+    "isMainReading": true,
+    "partTitle": "4과 5문단 (5문장)",
+    "sentences": [
+      {
+        "en": "For a microscope to function properly, it must meet certain minimum requirements.",
+        "ko": "현미경이 제대로 작동하려면 몇 가지 최소 요건을 충족해야 한다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "to부정사의 의미상 주어 for a microscope"
+      },
+      {
+        "en": "These include an eyepiece, a tube through which the viewer looks, and a lens for magnification.",
+        "ko": "여기에는 접안렌즈, 관찰자가 들여다보는 경통, 확대용 렌즈가 포함된다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "전치사 through + 관계대명사 which"
+      },
+      {
+        "en": "The microscope must also have a component that can hold a specimen and move from side to side to explore different areas of the specimen.",
+        "ko": "현미경에는 표본을 고정하고 좌우로 움직여 표본의 여러 부분을 살필 수 있는 부품도 있어야 한다."
+      },
+      {
+        "en": "Furthermore, a mechanism to bring the specimen into focus, usually accomplished by moving it closer to or farther from the lens, is necessary.",
+        "ko": "또한 표본에 초점을 맞추는 장치가 필요한데, 보통 표본을 렌즈에 더 가까이 또는 더 멀리 움직여 초점을 맞춘다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "to부정사의 형용사적 용법 / 과거분사구 accomplished ~"
+      },
+      {
+        "en": "Finally, a light source is required to illuminate the specimen.",
+        "ko": "마지막으로 표본을 비출 광원이 필요하다."
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l4_science_for_all_p6",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 4,
+    "lessonTitle": "Lesson 4. Creative Ideas for a Better World",
+    "isMainReading": true,
+    "partTitle": "4과 6문단 (5문장)",
+    "sentences": [
+      {
+        "en": "An ideal microscope would be made with the best performing materials and mechanisms for each component.",
+        "ko": "이상적인 현미경이라면 각 부품에 성능이 가장 좋은 재료와 장치를 써서 만들 것이다."
+      },
+      {
+        "en": "However, such a microscope would likely be enormously expensive.",
+        "ko": "하지만 그런 현미경은 매우 비쌀 가능성이 크다."
+      },
+      {
+        "en": "On the other hand, a cheap microscope may not be able to deliver high performance.",
+        "ko": "반면 값싼 현미경은 높은 성능을 내지 못할 수 있다."
+      },
+      {
+        "en": "Prakash and Cybulski experimented with various designs and materials in order to find a suitable compromise.",
+        "ko": "프라카시와 시불스키는 적절한 절충점을 찾기 위해 다양한 설계와 재료를 실험했다."
+      },
+      {
+        "en": "While many manufacturers might have settled for a middle ground between these two extremes, Prakash and Cybulski were determined to create a microscope that was both inexpensive and high-performing, while remaining accessible to all.",
+        "ko": "많은 제조업체는 두 극단의 중간쯤에서 타협했을지도 모르지만, 프라카시와 시불스키는 저렴하고 성능이 뛰어나면서도 누구나 이용할 수 있는 현미경을 만들기로 결심했다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "양보의 접속사 While / both A and B / while + 분사구문"
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l4_science_for_all_p7",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 4,
+    "lessonTitle": "Lesson 4. Creative Ideas for a Better World",
+    "isMainReading": true,
+    "partTitle": "4과 7문단 (4문장)",
+    "sentences": [
+      {
+        "en": "After drawing various designs on paper, Prakash and Cybulski realized that paper could be an excellent medium for their microscope.",
+        "ko": "종이에 여러 설계안을 그려 본 뒤, 프라카시와 시불스키는 종이가 현미경에 훌륭한 재료가 될 수 있음을 깨달았다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "After + 동명사 / 명사절 접속사 that"
+      },
+      {
+        "en": "It was cheap, easy to cut and fold with precision, and widely available.",
+        "ko": "종이는 값이 싸고 정밀하게 자르고 접기 쉬우며 널리 구할 수 있었다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "형용사 병렬 구조 / 형용사 뒤의 to부정사"
+      },
+      {
+        "en": "They faced many challenges during their attempts to develop the perfect design.",
+        "ko": "그들은 완벽한 설계를 개발하려는 과정에서 많은 어려움에 부딪혔다."
+      },
+      {
+        "en": "Ultimately, they settled on waterproof cardboard paper with a small glass ball lens and named their invention the Foldscope.",
+        "ko": "결국 그들은 작은 유리 구슬 렌즈와 방수 판지를 쓰기로 하고, 발명품에 폴드스코프라는 이름을 붙였다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "name + 목적어 + 목적격 보어"
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l4_science_for_all_p8",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 4,
+    "lessonTitle": "Lesson 4. Creative Ideas for a Better World",
+    "isMainReading": true,
+    "partTitle": "4과 8문단 (6문장)",
+    "sentences": [
+      {
+        "en": "The Foldscope provides a magnification of 140 times, making it capable of examining blood cells, bacteria, and single-celled organisms.",
+        "ko": "폴드스코프는 140배로 확대할 수 있어 혈구, 세균, 단세포 생물을 관찰할 수 있다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "결과를 나타내는 분사구문 making ~ / of + 동명사"
+      },
+      {
+        "en": "It is incredibly portable, weighs just 8 grams, fits easily in a pocket, and requires no external power source.",
+        "ko": "휴대성이 매우 뛰어나고 무게는 8그램에 불과하며, 주머니에 쉽게 들어가고 외부 전원도 필요 없다."
+      },
+      {
+        "en": "Moreover, the Foldscope is built to last, capable of surviving a three-story fall.",
+        "ko": "게다가 폴드스코프는 오래 사용하도록 만들어져 3층 높이에서 떨어져도 견딜 수 있다."
+      },
+      {
+        "en": "Its usefulness is further enhanced by its compatibility with phone cameras, allowing users to take pictures and record images of the specimen.",
+        "ko": "휴대전화 카메라와 호환되어 사용자가 표본을 촬영하고 이미지를 기록할 수 있으므로 활용도가 더욱 높다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "수동태 / 분사구문 allowing ~ / allow + 목적어 + to부정사"
+      },
+      {
+        "en": "It is also possible to project a high-resolution image on a wall using the phone light.",
+        "ko": "휴대전화 조명을 사용해 벽에 고해상도 이미지를 투사할 수도 있다."
+      },
+      {
+        "en": "It is no surprise that over 1.8 million Foldscopes have been distributed in over 160 countries, making it an invaluable tool for scientists worldwide.",
+        "ko": "160개가 넘는 나라에 폴드스코프가 180만 대 넘게 보급되어 전 세계 과학자들에게 매우 귀중한 도구가 된 것은 놀랄 일이 아니다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "It ~ that 가주어·진주어 / 현재완료 수동태 / 결과를 나타내는 분사구문"
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l4_science_for_all_p9",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 4,
+    "lessonTitle": "Lesson 4. Creative Ideas for a Better World",
+    "isMainReading": true,
+    "partTitle": "4과 9문단 (7문장)",
+    "sentences": [
+      {
+        "en": "The Foldscope has been utilized for various purposes beyond malaria diagnosis.",
+        "ko": "폴드스코프는 말라리아 진단 외에도 여러 용도로 활용되어 왔다."
+      },
+      {
+        "en": "In Nigeria, it has also been instrumental in detecting fake antimalarial drugs.",
+        "ko": "나이지리아에서는 가짜 말라리아 치료제를 찾아내는 데도 중요한 역할을 해 왔다."
+      },
+      {
+        "en": "The drugs are responsible for over 100,000 deaths annually in sub-Saharan Africa, mostly among children under five.",
+        "ko": "이 약품으로 사하라 이남 아프리카에서 해마다 10만 명 넘게 사망하며, 대부분은 다섯 살 미만의 아이들이다."
+      },
+      {
+        "en": "When crushed into powder and examined under a Foldscope, real drugs appear as uniform particles, while fake drugs appear as mere powder.",
+        "ko": "가루로 빻아 폴드스코프로 관찰하면 진짜 약은 균일한 입자로 보이고 가짜 약은 그저 가루처럼 보인다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "When + 과거분사구문 / 대조를 나타내는 while"
+      },
+      {
+        "en": "Furthermore, over 400 scientific papers have been published using Foldscope data, and around 1,200 projects are currently in progress in India.",
+        "ko": "더 나아가 폴드스코프 데이터를 사용한 과학 논문이 400편 넘게 발표되었고, 인도에서는 현재 약 1,200개의 프로젝트가 진행 중이다."
+      },
+      {
+        "en": "In the United States, Foldscope programs in public libraries have introduced many children to the wonders of science.",
+        "ko": "미국에서는 공공 도서관의 폴드스코프 프로그램을 통해 많은 아이가 과학의 경이로움을 접했다."
+      },
+      {
+        "en": "If Prakash and Cybulski had given up on their idea of the Foldscope, these achievements could not have occurred.",
+        "ko": "프라카시와 시불스키가 폴드스코프 구상을 포기했다면 이러한 성과는 이루어질 수 없었을 것이다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "가정법 과거완료"
+      }
+    ]
+  },
+  {
+    "id": "ybm2_l4_science_for_all_p10",
+    "book": "YBM(박준언) 공통영어 2",
+    "lesson": 4,
+    "lessonTitle": "Lesson 4. Creative Ideas for a Better World",
+    "isMainReading": true,
+    "partTitle": "4과 10문단 (2문장)",
+    "sentences": [
+      {
+        "en": "As billions of people lack access to health care and thousands of preventable deaths occur, science is playing a crucial role in finding solutions to these challenges.",
+        "ko": "수십억 명이 의료 서비스를 이용하지 못하고 예방 가능한 사망이 수천 건 발생하는 상황에서, 과학은 이런 문제의 해결책을 찾는 데 중요한 역할을 하고 있다."
+      },
+      {
+        "en": "Tools like the Foldscope, which make science accessible to everyone, are becoming increasingly important.",
+        "ko": "폴드스코프와 같이 누구나 과학에 접근할 수 있게 해 주는 도구는 점점 중요해지고 있다.",
+        "isDescriptiveTarget": true,
+        "grammarPoint": "관계대명사 which의 계속적 용법 / make + 목적어 + 목적격 보어"
       }
     ]
   }

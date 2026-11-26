@@ -8750,11 +8750,11 @@ const App = {
     if (!container) return;
 
     const allPassages = this.getAllTextMemorizePassages();
-    // 교재별 필터링: YBM은 1과와 2과 본문만 허용 (Further Reading 및 3, 4과 배제), 모의고사는 29~40번
+    // 새 YBM 지문은 본문으로 표시한 문단만 출제 범위에 포함한다.
     const filtered = allPassages.filter(p => {
       if (!bookName) return true;
       if (bookName.includes('YBM')) {
-        return (p.book && p.book.includes('YBM')) && (p.lesson === 1 || p.lesson === 2);
+        return (p.book && p.book.includes('YBM')) && (p.lesson === 1 || p.lesson === 2 || p.isMainReading === true);
       }
       if (bookName.includes('인천학평') || bookName.includes('모의고사')) {
         return (p.book && (p.book.includes('인천학평') || p.book.includes('29~40')));
